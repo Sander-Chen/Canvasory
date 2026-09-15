@@ -172,7 +172,16 @@ PY
   printf '%s\n' "$generation_line"
   rm -f "$generation_output"
   trap - EXIT
-  exec "$cli" status --run-id "$run_id" --follow --jsonl
+  follow_status=0
+  "$cli" status --run-id "$run_id" --follow --jsonl || follow_status=$?
+  if [ "$follow_status" -ne 0 ]; then
+    exit "$follow_status"
+  fi
+
+  # Keep the read-only result projection inside the same approved command.
+  # This removes a second approval boundary while preserving the one bound Run;
+  # a result failure is returned as-is and never starts another generation.
+  exec "$cli" result --run-id "$run_id" --json
 }
 
 # Linux dispatcher-only composition must intercept generate-and-follow before

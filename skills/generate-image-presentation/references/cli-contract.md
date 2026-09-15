@@ -1,6 +1,6 @@
 # Image PPTGen CLI contract
 
-Contract version: `0.2.0`
+Contract version: `0.2.1`
 
 ## Contents
 
@@ -113,3 +113,15 @@ Exit codes:
 Errors are one JSON object on stderr with stable `error` and `message` keys.
 Unknown mutation outcomes are never automatically retried. Image material is
 rejected before any platform or model request.
+
+
+## Atomic generate, follow, and result handoff
+
+On macOS and Linux, one approved `generate-and-follow` invocation performs
+exactly one `generate`, one continuous same-Run `status --follow`, and, only
+after successful terminal follow, one same-Run `result` readback. Its first
+line is the generation receipt, intermediate lines are status JSONL, and the
+final line is the result JSON. Follow or result failure preserves its native
+exit status and the existing Run; generation is never retried. The caller
+must not issue another result command or offer whole-Deck regeneration merely
+because a separate result command was blocked.

@@ -346,7 +346,15 @@ PY
   # owns the server child.
   IFS= read -r generation_line < "$generation_output"
   printf '%s\n' "$generation_line"
-  "$RUNTIME_CLI" status --run-id "$run_id" --follow --jsonl
+  local follow_status=0
+  "$RUNTIME_CLI" status --run-id "$run_id" --follow --jsonl || follow_status=$?
+  if [ "$follow_status" -ne 0 ]; then
+    return "$follow_status"
+  fi
+
+  # Produce the same-Run result while the command-scoped runtime is still
+  # alive.  A failure remains a failed readback and never causes regeneration.
+  "$RUNTIME_CLI" result --run-id "$run_id" --json
 }
 
 if [ "${1:-}" = "generate-and-follow" ]; then

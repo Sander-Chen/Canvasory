@@ -5700,6 +5700,28 @@ def run_image_route(context) -> ImageRouteOutcome:
             for future in as_completed(futures):
                 future.result()
 
+    def run_image_5_0_content_fanout(slides: list[dict]) -> list[Exception]:
+        """Finish every 5.0 body slide and retain mixed terminal truth."""
+        if not slides:
+            return []
+        max_workers = max(
+            1,
+            min(
+                len(slides),
+                provider_limit_for_config(context.image_designer_config),
+                provider_limit_for_config(context.image_generator_config),
+            ),
+        )
+        errors: list[Exception] = []
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(process_content_slide, slide) for slide in slides]
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as exc:
+                    errors.append(exc)
+        return errors
+
     def terminalize_unstarted_image_3_0_slides(
         slides: list[dict], *, reason: str
     ) -> None:
@@ -5885,6 +5907,18 @@ def run_image_route(context) -> ImageRouteOutcome:
     elif strategy == "image_3_2" and seed_slide:
         process_content_slide(seed_slide)
         run_concurrent_content_slides([item for item in ordered_slides if item["id"] != seed_slide["id"]])
+    elif strategy == "image_5_0":
+        fanout_errors = run_image_5_0_content_fanout(ordered_slides)
+        if fanout_errors:
+            reason = "image_5_0_content_fanout_partial: " + "; ".join(
+                sorted({str(error) for error in fanout_errors})
+            )
+            return persist_image_route_outcome(
+                image_route_outcome(
+                    run_status.COMPLETED_WITH_FAILURES,
+                    reason=reason,
+                )
+            )
     else:
         run_concurrent_content_slides(ordered_slides)
 

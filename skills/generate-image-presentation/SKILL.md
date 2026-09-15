@@ -409,12 +409,13 @@ and never rebuild it from the draft path or any other command.
   `<dispatcher> generate-and-follow --deck-id <deck_id> --requirement-file "<verified_path>" --jsonl`
 
   Its first stdout line is the exact JSON response to one `generate` request.
-  Its remaining stdout is the one `status --run-id <run_id> --follow --jsonl`
-  continuation, owned by that same command. Do not issue a separate `generate`
-  or `status` command on macOS or Linux. That means do not run
+  Its intermediate stdout is the one `status --run-id <run_id> --follow --jsonl`
+  continuation, and its final JSON line is the same-Run result readback.
+  Do not issue a separate `generate`, `status`, or `result` command on macOS or Linux:
   `<dispatcher> generate --deck-id <deck_id> --auto --json`,
   `<dispatcher> generate --deck-id <deck_id> --requirement-file "<verified_path>" --json`, or
-  `<dispatcher> status --run-id <run_id> --follow --jsonl` as a substitute.
+  `<dispatcher> status --run-id <run_id> --follow --jsonl`, or
+  `<dispatcher> result --run-id <run_id> --json` as a substitute.
 
 Parse the generation response explicitly: verify that
 `run_ids` is an array of exactly one item, verify that its first item is a
@@ -435,21 +436,22 @@ another response field or substitute `undefined`, `null`, or an empty value.
 
 - On macOS and Linux, the command already running from the prior step is the
   one follow process. After its first JSON line, keep the same
-  `generate-and-follow` continuation alive; it is executing exactly one
-  `status --run-id <run_id> --follow --jsonl` internally. Do not start a
-  separate `<dispatcher> status --run-id <run_id> --follow --jsonl` command.
+  `generate-and-follow` continuation alive: it executes one
+  `status --run-id <run_id> --follow --jsonl`, then one same-Run result readback internally. Do not start a
+  separate `<dispatcher> status --run-id <run_id> --follow --jsonl` or
+  `<dispatcher> result --run-id <run_id> --json` command.
 
 This is one long-running command, not a one-shot status check. If its tool
 response reports `running`, a `session_id`, or a `cell_id`, keep the same command continuation alive. Use the same `session_id` or `cell_id` associated
 with that continuation: resume only that same `session_id` with `write_stdin`,
 or only that same `cell_id` with `wait`, until the status process exits. Do not
-start a second status command. Do not run `result` while that continuation is
-outstanding. A follow failure, missing continuation, non-zero exit,
+start a second status or result command. A follow failure, missing continuation, non-zero exit,
 malformed JSONL, missing terminal event, or mismatched Run is a stopped failure:
 do not retry confirmation or generation.
 
-After that one process exits, read its final grounded status event. The terminal
-event's `run_id` must equal the bound `run_id`, and `source_facts.run_status`
+After that one command exits, read the last grounded status event before the
+final result line. The terminal event's `run_id` must equal the bound `run_id`,
+and `source_facts.run_status`
 must be one of the documented terminal states: `completed`,
 `completed_with_failures`, `failed`, `interrupted`, or `timed_out`. `queued`,
 `pending`, `running`, `generation_started`, and `in_progress` are not terminal
@@ -462,10 +464,10 @@ reasoning, page content, provider facts, or success.
 
 ## Return the same-Run result
 
-Only after the follow process exits with that verified terminal event, run
-exactly once, using that same bound `run_id`:
-
-`<dispatcher> result --run-id <run_id> --json`
+After successful terminal follow, the same `generate-and-follow` command automatically reads the result
+once for the same `run_id`; parse its final JSON line. Never ask for
+another approval or offer whole-Deck regeneration because a separate result
+command was blocked. A readback failure preserves the existing Run.
 
 For a completed Run, this writes a Run-scoped offline Preview bundle while
 the managed runtime is still available. The returned `preview_url` is
@@ -478,17 +480,12 @@ runtime, network, backend, or port 3130. Do not use the legacy
 only for compatibility with an older embedded-image page and lacks the
 interactive Run bundle controls. The returned Preview does not depend on the command-scoped 3130 service.
 
-Use the returned status literally. `partially_completed`, `in_progress`, and
-`failed` are not complete, even when some PNGs exist. A nonterminal result
-cannot close the task. Verify that the returned result's `run_id` equals the
-bound `run_id`. For an in-progress Run, keep that same `run_id` when presenting
-the existing loopback Preview and download links:
-
-`<doctor.base_url>/history/run/<run_id>/preview`
-
-and the returned Run download URL. Open the exact Preview when a real browser
-opener is available; otherwise provide the exact clickable URL and say it was
-not opened. For a completed Run, do not present a loopback Preview or download URL as
+Use the returned status literally. `partially_completed`, `in_progress`, and `failed`
+cannot close the task. Verify that the result's `run_id` equals the bound value.
+For `partially_completed`, report its successful-page and failed-page evidence,
+but do not present a loopback Preview as a complete
+deliverable and do not suggest a new whole-Deck generation. For a completed
+Run, do not present a loopback Preview or download URL as
 usable after the command exits. Use only the returned `file:` Preview and
 matching `file:` ZIP from the completed Run.
 Never substitute a different Run, Run Detail, screenshot, or API response for
