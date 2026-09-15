@@ -1,0 +1,6 @@
+interface:
+  display_name: "Generate Image Presentation"
+  short_description: "Create and follow an Image PPTGen 5.0 presentation"
+  default_prompt: "Use $generate-image-presentation to confirm pagination and a whole-Deck design direction, then follow one Image 5.0 Run."
+policy:
+  allow_implicit_invocation: true

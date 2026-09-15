@@ -1,0 +1,315 @@
+{
+  "application_payload_reference": {
+    "bytes": 7298008,
+    "role": "size-budget-reference-only",
+    "sha256": "ad526e6f34b8d990c39086aeb0d5944b504469ba32955861e6c3cce6cb33c4ec",
+    "version": "0.0.0-runtime-core-freeze"
+  },
+  "freeze_id": "pbs-20260718-cp311-plus-cp312-v4",
+  "frozen_at": "2026-08-18T23:20:14+08:00",
+  "platforms": {
+    "macos-arm64": {
+      "budget": {
+        "first_download_bytes": 45964863,
+        "hard_cap_pass": true,
+        "target_pass": true
+      },
+      "license_bundle": {
+        "archive_format": "zip-stored-v1",
+        "bytes": 424146,
+        "filename": "macos-arm64-licenses.zip",
+        "member_count": 39,
+        "runtime_recipe": "PYTHON.json + python/licenses/** + python/install/lib/python3.11/LICENSE.txt",
+        "sha256": "dc8d72172df494d125b9a03825940c4e6dbd0002ee24ea162fcac1d35a73b1a3",
+        "wheel_recipe": "all wheel .dist-info license members + frozen supplemental license"
+      },
+      "metadata_asset": {
+        "archive_format": "tar.zst",
+        "bytes": 41202871,
+        "filename": "cpython-3.11.15+20260718-aarch64-apple-darwin-pgo+lto-full.tar.zst",
+        "purpose": "build-time PYTHON.json and native-license extraction",
+        "sha256": "e7af7e76dd0b18070d00257565da5caf373df1aa247a92e99902377d705ceb7f",
+        "ship_to_user": false,
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/cpython-3.11.15+20260718-aarch64-apple-darwin-pgo+lto-full.tar.zst"
+      },
+      "pip_platform": "macosx_11_0_arm64",
+      "python_json": {
+        "build_options": "pgo+lto",
+        "bytes": 108796,
+        "license_path": "licenses/LICENSE.cpython.txt",
+        "member": "python/PYTHON.json",
+        "metadata_version": "8",
+        "python_exe": "install/bin/python3.11",
+        "sha256": "423329bd41dde20e00ec5473cf27ba4ebfde2b8e7cdb52b884e48a78880af695"
+      },
+      "python_platform_tag": "macosx-11.0-arm64",
+      "runtime_archive_layout": {
+        "member_root": "python",
+        "python_exe": "bin/python3.11"
+      },
+      "runtime_asset": {
+        "archive_format": "tar.gz",
+        "bytes": 27115492,
+        "filename": "cpython-3.11.15+20260718-aarch64-apple-darwin-install_only_stripped.tar.gz",
+        "sha256": "b21dbc3f3e01932fcc3f0f4c51e5a7ef61888cb454d23eee6e8207c6f52d0b04",
+        "ship_to_user": true,
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/cpython-3.11.15+20260718-aarch64-apple-darwin-install_only_stripped.tar.gz"
+      },
+      "target_triple": "aarch64-apple-darwin",
+      "wheelhouse_bundle": {
+        "archive_format": "zip-stored-v1",
+        "bytes": 11127217,
+        "count": 18,
+        "filename": "macos-arm64-wheelhouse.zip",
+        "sha256": "33cbc3862888672dacc6a685b7abd9d7982d5b6e1296407742558cbd6211629b"
+      },
+      "wheels": [
+        {
+          "bytes": 8458,
+          "filename": "blinker-1.9.0-py3-none-any.whl",
+          "sha256": "ba0efaa9080b619ff2f3459d1d500c57bddea4a6b424b60a91141db6fd2f08bc"
+        },
+        {
+          "bytes": 136983,
+          "filename": "certifi-2026.7.22-py3-none-any.whl",
+          "sha256": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775"
+        },
+        {
+          "bytes": 363585,
+          "filename": "charset_normalizer-3.5.1-cp311-cp311-macosx_10_9_universal2.whl",
+          "sha256": "eda059b6bc8bc0812d626fd91a7ce01bf583df0a61296eff390fd94141a34e30"
+        },
+        {
+          "bytes": 344456,
+          "filename": "charset_normalizer-3.5.1-cp312-cp312-macosx_10_13_universal2.whl",
+          "sha256": "5b6d1386bf0096d26d3a863dc0a487a5b4eb9aa93cf5ba69683d29dde6b9d60f"
+        },
+        {
+          "bytes": 119243,
+          "filename": "click-8.4.2-py3-none-any.whl",
+          "sha256": "e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76"
+        },
+        {
+          "bytes": 103424,
+          "filename": "flask-3.1.3-py3-none-any.whl",
+          "sha256": "f4bcbefc124291925f1a26446da31a5178f9483862233b23c0c96a20701f670c"
+        },
+        {
+          "bytes": 13257,
+          "filename": "flask_cors-6.0.2-py3-none-any.whl",
+          "sha256": "e57544d415dfd7da89a9564e1e3a9e515042df76e12130641ca6f3f2f03b699a"
+        },
+        {
+          "bytes": 65455,
+          "filename": "idna-3.18-py3-none-any.whl",
+          "sha256": "7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2"
+        },
+        {
+          "bytes": 16234,
+          "filename": "itsdangerous-2.2.0-py3-none-any.whl",
+          "sha256": "c6242fc49e35958c8b15141343aa660db5fc54d4f13a1db01a3f5891b98700ef"
+        },
+        {
+          "bytes": 134899,
+          "filename": "jinja2-3.1.6-py3-none-any.whl",
+          "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"
+        },
+        {
+          "bytes": 12058,
+          "filename": "markupsafe-3.0.3-cp311-cp311-macosx_11_0_arm64.whl",
+          "sha256": "4bd4cd07944443f5a265608cc6aab442e4f74dff8088b0dfc8238647b8f6ae9a"
+        },
+        {
+          "bytes": 12020,
+          "filename": "markupsafe-3.0.3-cp312-cp312-macosx_11_0_arm64.whl",
+          "sha256": "1872df69a4de6aead3491198eaf13810b565bdbeec3ae2dc8780f14458ec73ce"
+        },
+        {
+          "bytes": 4657866,
+          "filename": "pillow-12.1.1-cp311-cp311-macosx_11_0_arm64.whl",
+          "sha256": "365b10bb9417dd4498c0e3b128018c4a624dc11c7b97d8cc54effe3b096f4c38"
+        },
+        {
+          "bytes": 4657601,
+          "filename": "pillow-12.1.1-cp312-cp312-macosx_11_0_arm64.whl",
+          "sha256": "adebb5bee0f0af4909c30db0d890c773d1a92ffe83da908e2e9e720f8edf3984"
+        },
+        {
+          "bytes": 64738,
+          "filename": "requests-2.32.5-py3-none-any.whl",
+          "sha256": "2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6"
+        },
+        {
+          "bytes": 131087,
+          "filename": "urllib3-2.7.0-py3-none-any.whl",
+          "sha256": "9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897"
+        },
+        {
+          "bytes": 56232,
+          "filename": "waitress-3.0.2-py3-none-any.whl",
+          "sha256": "c56d67fd6e87c2ee598b76abdd4e96cfad1f24cacdea5078d382b1f9d7b5ed2e"
+        },
+        {
+          "bytes": 226459,
+          "filename": "werkzeug-3.1.8-py3-none-any.whl",
+          "sha256": "63a77fb8892bf28ebc3178683445222aa500e48ebad5ec77b0ad80f8726b1f50"
+        }
+      ]
+    }
+  },
+  "policy": {
+    "fallback_activation": "after_two_approach_different_official_runtime_failures",
+    "fallback_user_choice": false,
+    "hard_first_download_bytes": 104857600,
+    "network_during_install": false,
+    "official_probe_max_attempts_per_platform": 2,
+    "official_runtime_first": true,
+    "target_first_download_bytes": 62914560
+  },
+  "release": {
+    "abi": "cp311",
+    "commit": "0e4d9c24b72d28573e622518f09b16aef4a33be8",
+    "immutable": true,
+    "provider": "Astral python-build-standalone",
+    "python_tag": "cp311",
+    "python_version": "3.11.15",
+    "release_url": "https://github.com/astral-sh/python-build-standalone/releases/tag/20260718",
+    "tag": "20260718"
+  },
+  "schema_version": 1,
+  "supplemental_licenses": [
+    {
+      "bytes": 1056,
+      "component": "flask-cors",
+      "license": "MIT",
+      "reason": "wheel and sdist declare MIT but contain no license text",
+      "repository_path": "licenses/flask-cors-6.0.2-LICENSE.txt",
+      "sha256": "134a20d852c0cf9e0f3c228767921b76f4bfc4af4a2fc7c4cc90f6b4fd407b5c",
+      "source_commit": "fa55dcbec68b3524a39e5057c35c29c221a27d64",
+      "source_kind": "upstream_git_tag",
+      "source_url": "https://raw.githubusercontent.com/corydolphin/flask-cors/fa55dcbec68b3524a39e5057c35c29c221a27d64/LICENSE",
+      "version": "6.0.2"
+    }
+  ],
+  "wheel_sources": [
+    {
+      "direct": false,
+      "license": "MIT",
+      "license_source": "wheel",
+      "name": "blinker",
+      "version": "1.9.0"
+    },
+    {
+      "direct": false,
+      "license": "MPL-2.0",
+      "license_source": "wheel",
+      "name": "certifi",
+      "version": "2026.7.22"
+    },
+    {
+      "direct": false,
+      "license": "MIT",
+      "license_source": "wheel",
+      "name": "charset-normalizer",
+      "version": "3.5.1"
+    },
+    {
+      "direct": false,
+      "license": "BSD-3-Clause",
+      "license_source": "wheel",
+      "name": "click",
+      "requires_dist": [
+        "colorama; platform_system == \"Windows\""
+      ],
+      "source_metadata": "https://pypi.org/pypi/click/8.4.2/json",
+      "version": "8.4.2"
+    },
+    {
+      "direct": false,
+      "license": "BSD-3-Clause",
+      "license_source": "wheel",
+      "name": "colorama",
+      "platform_marker": "platform_system == \"Windows\"",
+      "source_metadata": "https://pypi.org/pypi/colorama/0.4.6/json",
+      "source_url": "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl",
+      "version": "0.4.6"
+    },
+    {
+      "direct": true,
+      "license": "BSD-3-Clause",
+      "license_source": "wheel",
+      "name": "flask",
+      "version": "3.1.3"
+    },
+    {
+      "direct": true,
+      "license": "MIT",
+      "license_source": "supplemental_licenses",
+      "name": "flask-cors",
+      "version": "6.0.2"
+    },
+    {
+      "direct": false,
+      "license": "BSD-3-Clause",
+      "license_source": "wheel",
+      "name": "idna",
+      "version": "3.18"
+    },
+    {
+      "direct": false,
+      "license": "BSD-3-Clause",
+      "license_source": "wheel",
+      "name": "itsdangerous",
+      "version": "2.2.0"
+    },
+    {
+      "direct": false,
+      "license": "BSD-3-Clause",
+      "license_source": "wheel",
+      "name": "jinja2",
+      "version": "3.1.6"
+    },
+    {
+      "direct": false,
+      "license": "BSD-3-Clause",
+      "license_source": "wheel",
+      "name": "markupsafe",
+      "version": "3.0.3"
+    },
+    {
+      "direct": true,
+      "license": "MIT-CMU",
+      "license_source": "wheel",
+      "name": "pillow",
+      "version": "12.1.1"
+    },
+    {
+      "direct": true,
+      "license": "Apache-2.0",
+      "license_source": "wheel",
+      "name": "requests",
+      "version": "2.32.5"
+    },
+    {
+      "direct": false,
+      "license": "MIT",
+      "license_source": "wheel",
+      "name": "urllib3",
+      "version": "2.7.0"
+    },
+    {
+      "direct": true,
+      "license": "ZPL-2.1",
+      "license_source": "wheel",
+      "name": "waitress",
+      "version": "3.0.2"
+    },
+    {
+      "direct": false,
+      "license": "BSD-3-Clause",
+      "license_source": "wheel",
+      "name": "werkzeug",
+      "version": "3.1.8"
+    }
+  ]
+}
