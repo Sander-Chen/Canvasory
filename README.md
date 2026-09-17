@@ -84,6 +84,12 @@ The outputs are rendered images rather than native slide objects. Use image edit
 
 No. The completed Preview is static and does not need a local service to stay running.
 
+## License & commercial use
+
+Canvasory is source-available for **noncommercial use** under the [Canvasory Noncommercial License](LICENSE). **All commercial use requires a separate written commercial license**, including internal business use, client work, commercial presentations, and hosted services.
+
+[Request commercial authorization](https://github.com/Sander-Chen/Canvasory/issues/new?title=Commercial%20license%20inquiry). An inquiry is not authorization. Third-party licenses and rights already granted for earlier Apache-2.0 material remain unchanged; see [LICENSE](LICENSE) for scope and terms.
+
 ## For developers
 
 The Codex Skill is the user entry point. The source is available at [Sander-Chen/Canvasory](https://github.com/Sander-Chen/Canvasory).
@@ -97,14 +103,3 @@ The Codex Skill is the user entry point. The source is available at [Sander-Chen
 | `packaging/image/` | macOS ARM64 and Linux x86_64 adapters |
 
 Earlier versions also included `eval-materials/` for English acceptance samples. That directory is no longer in the current tree; those samples were never a restriction on supported topics.
-
-<details>
-<summary>History &amp; provenance</summary>
-
-Image PPTGen is the historical name of the project. Historical generation routes are not selectable product modes.
-
-The historical Image PPTGen 3.0 frog-life demo contains five slides. Three selected images remain in the repository; they document earlier output, not the current Canvasory release. Source identity, file hashes, and known limitations are retained in [historical demo provenance](docs/demo/PROVENANCE.md).
-
-The [previous comparison image and its provenance](docs/demo/COMPARISON.md) are also preserved. The four images displayed in this README come from the owner-supplied Canvasory launch materials; see [README image provenance](docs/readme/PROVENANCE.md) for their source and compression details.
-
-</details>
