@@ -24,7 +24,7 @@ from pathlib import Path, PurePosixPath
 
 IMAGE_PRODUCT = "image-pptgen"
 IMAGE_SERVICE = "image-pptgen-server"
-IMAGE_SKILL = "generate-image-presentation"
+IMAGE_SKILL = "canvasory"
 IMAGE_COMMAND = "image-pptgen"
 IMAGE_SERVICE_COMMAND = "image-pptgen-server"
 IMAGE_BASE_URL = "http://127.0.0.1:3130"
@@ -283,7 +283,7 @@ def _release_identity(repo_root: Path, app_root: Path, *, version: str) -> dict[
         "platform": PLATFORM,
         "command": IMAGE_COMMAND,
         "service_command": IMAGE_SERVICE_COMMAND,
-        "skill": IMAGE_SKILL,
+        "skill": "canvasory",
         "base_url": IMAGE_BASE_URL,
         "data_root": IMAGE_DATA_ROOT,
         "config_root": IMAGE_CONFIG_ROOT,
@@ -515,7 +515,7 @@ def build_release(
             "size": archive_path.stat().st_size,
         },
         "identity": identity,
-        "skill": IMAGE_SKILL,
+        "skill": "canvasory",
         "command": IMAGE_COMMAND,
         "service_command": IMAGE_SERVICE_COMMAND,
         "doctor_command": "image-pptgen doctor --json",

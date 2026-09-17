@@ -198,6 +198,7 @@ def load_run_context(run_id: int, db_path: str | None = None) -> PipelineRunCont
         expected_model: str | None = None,
         expected_thinking: str | None = None,
         expected_api_key: str | None = None,
+        expected_name: str | None = None,
     ) -> dict:
         error = (
             f"Native Image {native_route_label} requires a valid bound {binding_key} "
@@ -224,6 +225,7 @@ def load_run_context(run_id: int, db_path: str | None = None) -> PipelineRunCont
                 and profile.get("endpoint") != expected_endpoint
             )
             or (expected_model is not None and profile.get("model") != expected_model)
+            or (expected_name is not None and profile.get("name") != expected_name)
             or (
                 expected_thinking is not None
                 and profile.get("thinking") != expected_thinking
@@ -241,11 +243,30 @@ def load_run_context(run_id: int, db_path: str | None = None) -> PipelineRunCont
 
     if is_native_three_zero_run:
         if native_director_route == model_profiles.NATIVE_IMAGE_5_0_ROUTE:
-            # One fixed public Image 5.0 combination: Sol Low director,
-            # Luna Low launcher, and the existing Sol Low director profile
-            # reused as palette extractor.
-            expected_director_model = "gpt-5.6-sol"
+            # Image 5.0 stays on the public Sol Low director except for the
+            # hidden debugging-only Luna Low director combination.  The
+            # persisted managed config identity selects one exact server-owned
+            # director; both routes keep Luna Low generation and Sol Low
+            # palette extraction.
+            expected_director_model = {
+                model_profiles.NATIVE_IMAGE_5_0_CONFIG_NAME: "gpt-5.6-sol",
+                model_profiles.NATIVE_IMAGE_5_0_LUNA_DIRECTOR_CONFIG_NAME: "gpt-5.6-luna",
+            }.get(config_row.get("name"))
+            if expected_director_model is None:
+                raise ValueError(
+                    f"Native Image 5.0 requires a known Director config for run {run_id}"
+                )
+            # Only the debugging combination pins its exact managed profile
+            # identity; the public Sol Low combination keeps its existing
+            # model/effort validation.
+            expected_director_name = (
+                model_profiles.NATIVE_IMAGE_LUNA_DIRECTOR_PROFILE_NAME
+                if config_row.get("name")
+                == model_profiles.NATIVE_IMAGE_5_0_LUNA_DIRECTOR_CONFIG_NAME
+                else None
+            )
             expected_generator_model = "gpt-5.6-luna"
+            expected_palette_model = "gpt-5.6-sol"
         else:
             expected_director_model = {
                 model_profiles.NATIVE_IMAGE_3_0_CONFIG_NAME: "gpt-5.6-sol",
@@ -262,6 +283,8 @@ def load_run_context(run_id: int, db_path: str | None = None) -> PipelineRunCont
                 == model_profiles.NATIVE_IMAGE_3_0_TERRA_E2E_CONFIG_NAME
                 else "gpt-5.6-luna"
             )
+            expected_palette_model = expected_director_model
+            expected_director_name = None
         image_designer_config = strict_native_three_zero_bound_config(
             "image_designer",
             expected_role="image_designer",
@@ -270,6 +293,7 @@ def load_run_context(run_id: int, db_path: str | None = None) -> PipelineRunCont
             expected_model=expected_director_model,
             expected_thinking="low",
             expected_api_key="",
+            expected_name=expected_director_name,
         )
         image_generator_config = strict_native_three_zero_bound_config(
             "image_generator",
@@ -280,22 +304,38 @@ def load_run_context(run_id: int, db_path: str | None = None) -> PipelineRunCont
             expected_thinking="low",
             expected_api_key="",
         )
+        # The public Sol Low director reuses its own profile for palette
+        # extraction.  The debugging Luna Low director must keep the distinct
+        # managed Sol Low director profile instead of drifting onto Luna.
+        expected_palette_name = (
+            model_profiles.NATIVE_IMAGE_DIRECTOR_PROFILE_NAME
+            if expected_palette_model != expected_director_model
+            else None
+        )
         image_palette_extractor_config = strict_native_three_zero_bound_config(
             "image_palette_extractor",
             expected_role="image_designer",
             expected_api_type=model_profiles.CODEX_EXEC_API_TYPE,
             expected_endpoint=model_profiles.CODEX_EXEC_ENDPOINT,
-            expected_model=expected_director_model,
+            expected_model=expected_palette_model,
             expected_thinking="low",
             expected_api_key="",
+            expected_name=expected_palette_name,
         )
-        if (
+        palette_reuses_director = (
             image_palette_extractor_config["profile_id"]
-            != image_designer_config["profile_id"]
-        ):
+            == image_designer_config["profile_id"]
+        )
+        if expected_palette_model == expected_director_model:
+            if not palette_reuses_director:
+                raise ValueError(
+                    f"Native Image {native_route_label} requires image_palette_extractor "
+                    "to reuse the image_designer profile"
+                )
+        elif palette_reuses_director:
             raise ValueError(
-                f"Native Image {native_route_label} requires image_palette_extractor "
-                "to reuse the image_designer profile"
+                f"Native Image {native_route_label} requires a distinct Sol Low "
+                "image_palette_extractor profile for the Luna Low director"
             )
     else:
         image_designer_config = bound_config("image_designer", designer_config)

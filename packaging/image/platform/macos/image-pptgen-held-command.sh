@@ -14,11 +14,6 @@ platform_error() {
   exit 3
 }
 
-protocol_error() {
-  printf '%s\n' "{\"error\":\"platform_error\",\"message\":\"$1\"}" >&2
-  exit 4
-}
-
 INSTALL_ROOT="${IMAGE_PPTGEN_INSTALL_ROOT:-$HOME/.codex/image-pptgen}"
 case "$INSTALL_ROOT" in
   */image-pptgen) PLATFORM_HOME="${INSTALL_ROOT%/image-pptgen}" ;;
@@ -236,130 +231,7 @@ then
   platform_error "Image PPTGen held runtime did not become ready"
 fi
 
-run_generate_and_follow() {
-  local deck_id=""
-  local saw_deck_id=0
-  local saw_jsonl=0
-  local saw_auto=0
-  local requirement_file=""
-  local saw_requirement_file=0
-  while [ "$#" -gt 0 ]; do
-    case "$1" in
-      --deck-id)
-        [ "$#" -ge 2 ] || protocol_error "generate-and-follow requires --deck-id"
-        [ "$saw_deck_id" -eq 0 ] || protocol_error "generate-and-follow accepts --deck-id exactly once"
-        deck_id="$2"
-        saw_deck_id=1
-        shift 2
-        ;;
-      --jsonl)
-        [ "$saw_jsonl" -eq 0 ] || protocol_error "generate-and-follow accepts --jsonl at most once"
-        saw_jsonl=1
-        shift
-        ;;
-      --auto)
-        [ "$saw_auto" -eq 0 ] || protocol_error "generate-and-follow accepts --auto at most once"
-        saw_auto=1
-        shift
-        ;;
-      --requirement-file)
-        [ "$#" -ge 2 ] || protocol_error "generate-and-follow requires --requirement-file"
-        [ "$saw_requirement_file" -eq 0 ] || protocol_error "generate-and-follow accepts --requirement-file exactly once"
-        requirement_file="$2"
-        saw_requirement_file=1
-        shift 2
-        ;;
-      *) protocol_error "generate-and-follow received an unsupported argument" ;;
-    esac
-  done
-  case "$deck_id" in
-    ''|*[!0-9]*) protocol_error "generate-and-follow requires a positive integer deck id" ;;
-  esac
-  [ "$deck_id" -gt 0 ] || protocol_error "generate-and-follow requires a positive integer deck id"
-  [ "$saw_jsonl" -eq 1 ] || protocol_error "generate-and-follow requires --jsonl exactly once"
-
-  # Exactly one generation intent is required and it is validated before any
-  # mutation.  Auto forwards --auto; Manual forwards the confirmed direction by
-  # path so multiline text, quotes and newlines stay byte-faithful without
-  # shell evaluation.
-  if [ "$saw_auto" -eq 1 ] && [ "$saw_requirement_file" -eq 1 ]; then
-    protocol_error "generate-and-follow treats --auto and --requirement-file as mutually exclusive"
-  fi
-  if [ "$saw_auto" -eq 0 ] && [ "$saw_requirement_file" -eq 0 ]; then
-    protocol_error "generate-and-follow requires exactly one generation intent"
-  fi
-  if [ "$saw_requirement_file" -eq 1 ]; then
-    [ -n "$requirement_file" ] || protocol_error "generate-and-follow requires a non-empty requirement file path"
-    [ -f "$requirement_file" ] || protocol_error "generate-and-follow requirement file does not exist"
-    [ -s "$requirement_file" ] || protocol_error "generate-and-follow requirement file is empty"
-    [ -r "$requirement_file" ] || protocol_error "generate-and-follow requirement file is not readable"
-  fi
-
-  local generation_output="$TEMP_ROOT/generation.json"
-  local generation_status=0
-  local -a generate_argv=(generate --deck-id "$deck_id")
-  if [ "$saw_auto" -eq 1 ]; then
-    generate_argv+=(--auto)
-  else
-    generate_argv+=(--requirement-file "$requirement_file")
-  fi
-  generate_argv+=(--json)
-  # Exactly one mutation attempt.  A failed or unparseable generation response
-  # is reported as-is and never retried.
-  "$RUNTIME_CLI" "${generate_argv[@]}" >"$generation_output" || generation_status=$?
-  if [ "$generation_status" -ne 0 ]; then
-    cat "$generation_output" >&2 || true
-    return "$generation_status"
-  fi
-
-  local run_id
-  if ! run_id="$($RUNTIME_PYTHON - "$generation_output" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-lines = Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
-if len(lines) != 1 or not lines[0].strip():
-    raise SystemExit("generation response must contain exactly one JSON line")
-try:
-    payload = json.loads(lines[0])
-except json.JSONDecodeError as exc:
-    raise SystemExit(f"generation response is not valid JSON: {exc}")
-run_ids = payload.get("run_ids") if isinstance(payload, dict) else None
-if not isinstance(run_ids, list) or len(run_ids) != 1:
-    raise SystemExit("generation response must contain exactly one run_ids item")
-run_id = run_ids[0]
-if isinstance(run_id, bool) or not isinstance(run_id, int) or run_id <= 0:
-    raise SystemExit("generation response run_ids[0] must be a positive integer")
-print(run_id)
-PY
-)"; then
-    protocol_error "generation response did not bind exactly one positive run id"
-  fi
-  case "$run_id" in
-    ''|*[!0-9]*) protocol_error "generation response run id is invalid" ;;
-  esac
-  [ "$run_id" -gt 0 ] || protocol_error "generation response run id is invalid"
-
-  # The generation response is the first line of this dispatcher-only
-  # composition.  Follow is executed exactly once while this helper still
-  # owns the server child.
-  IFS= read -r generation_line < "$generation_output"
-  printf '%s\n' "$generation_line"
-  local follow_status=0
-  "$RUNTIME_CLI" status --run-id "$run_id" --follow --jsonl || follow_status=$?
-  if [ "$follow_status" -ne 0 ]; then
-    return "$follow_status"
-  fi
-
-  # Produce the same-Run result while the command-scoped runtime is still
-  # alive.  A failure remains a failed readback and never causes regeneration.
-  "$RUNTIME_CLI" result --run-id "$run_id" --json
-}
-
-if [ "${1:-}" = "generate-and-follow" ]; then
-  shift
-  run_generate_and_follow "$@"
-else
-  "$RUNTIME_CLI" "$@"
-fi
+# The installed Python CLI owns the complete business operation. Keep this
+# layer limited to the command-owned server lifetime and forward argv/stdout,
+# stderr, and exit status without rebuilding generate/follow/result in shell.
+"$RUNTIME_CLI" "$@"

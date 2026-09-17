@@ -23,6 +23,8 @@ isolated runtimes may override it with `--base-url`.
 - `image-pptgen split confirm --draft-id <id> --json`
 - `image-pptgen generate --deck-id <id> --auto --json`
 - `image-pptgen generate --deck-id <id> --requirement-file <path> --json`
+- `image-pptgen generate-and-follow --deck-id <id> --auto --jsonl`
+- `image-pptgen generate-and-follow --deck-id <id> --requirement-file <path> --jsonl`
 - `image-pptgen status --run-id <id> --follow --jsonl`
 - `image-pptgen result --run-id <id> --json`
 - `image-pptgen result --run-id <id> --static-preview-file <path> --json`
@@ -74,7 +76,10 @@ palette extraction. It also owns faithful split execution.
 
 ## Output and exits
 
-Commands return one JSON object unless marked JSONL. Proposal and revision
+Commands return one JSON object unless marked JSONL. Every accepted deck
+mutation and Run read includes a nested `receipt` using
+`image-pptgen.business-receipt/v1`; existing top-level fields remain additive
+and unchanged. Proposal and revision
 return the complete Markdown projection, `draft_id`, `deck_id`, faithful mode,
 page count, and status. A pure target-page revision uses the same pending draft,
 does not call a model, and returns a typed `target_page_count_unavailable`
@@ -120,8 +125,13 @@ rejected before any platform or model request.
 On macOS and Linux, one approved `generate-and-follow` invocation performs
 exactly one `generate`, one continuous same-Run `status --follow`, and, only
 after successful terminal follow, one same-Run `result` readback. Its first
-line is the generation receipt, intermediate lines are status JSONL, and the
-final line is the result JSON. Follow or result failure preserves its native
-exit status and the existing Run; generation is never retried. The caller
+line is `submission_intent`, its second is `generation_accepted`, intermediate
+lines are status JSONL, and the final line is `result_delivered`. These four
+business stages carry one operation UUID, Deck, Run after acceptance, strictly
+increasing receipt indexes, recovery attempt zero, and original backend status
+where applicable. Heartbeats carry no business receipt. Follow or result
+failure preserves its native exit status and the existing Run; generation is
+never retried. An accepted POST whose response is lost emits an unbound
+`submission_intent/unknown` receipt and stops. The caller
 must not issue another result command or offer whole-Deck regeneration merely
 because a separate result command was blocked.

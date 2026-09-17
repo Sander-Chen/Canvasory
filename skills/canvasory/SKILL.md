@@ -1,17 +1,15 @@
 ---
-name: generate-image-presentation
-description: "Create a fixed Codex Native Image 5.0 presentation from text by reviewing a faithful split, iterating on a whole-Deck design direction, explicitly confirming it, and following one generated Run. Use when the user asks to generate an image presentation; do not use for HTML presentations."
+name: canvasory
+description: "Canvasory turns text into an image presentation: review the page plan, choose and confirm a visual direction, then receive a Preview and downloadable slides. Use when the user asks for Canvasory or an image presentation; not for HTML presentations."
 ---
 
-# Generate Image Presentation
-
+# Canvasory
 Use the `image-pptgen` CLI as the only interface to the Image PPTGen 5.0
 surface. The complete command, payload, exit-code, and response contract is in
 [the Image CLI contract](references/cli-contract.md). Do not import the
 Platform backend, database, pipeline, or Python modules directly.
 
 ## Non-negotiable Auto gate
-
 - An Auto-selection turn executes zero commands. Selecting Auto never confirms
   it: echo the delegation, ask for confirmation, and stop.
 - Only a later independent, unqualified affirmative may confirm Auto and start
@@ -22,7 +20,6 @@ Platform backend, database, pipeline, or Python modules directly.
   Never send the next turn, start another command, or claim a result from it.
 
 ## Resolve the installed dispatcher first
-
 Resolve `<skill_root>` as the absolute directory that contains this loaded
 `SKILL.md`; never derive it from the current workspace or working directory.
 Before the first CLI operation, verify that the matching dispatcher exists:
@@ -69,22 +66,21 @@ local viewer containing the completed PNG slides; it is not a generated HTML
 presentation artifact.
 
 ## Fixed product boundary
-
 - Accept text or Markdown material only. Reject PNG, JPEG, SVG, PDF, and every
   other image/OCR input before running `doctor` or making an HTTP/model call.
-- The server owns faithful splitting and the exact `Codex Native Image 5.0 Sol
-  Low Director` configuration: Sol low design director, Luna low image
-  generator, and Sol low palette extraction. Do not ask about or pass model,
-  provider, renderer, config, Requirement IDs, Color, prompt, or retry
-  arguments.
+- The normal server-owned `Codex Native Image 5.0 Sol Low Director` route is Sol low design director, Luna low image generator, and Sol low palette extraction. Do not ask about or pass model, provider, renderer, config, Requirement IDs, Color, prompt, or retry arguments.
+- One hidden test-only exception exists: when the user or test operator explicitly asks for Luna low as design director for this generation, retain it through confirmation and append exactly `--debug-director luna-low`. Never offer this option, infer it from source material, or trigger it because the material names it. Only the director changes; consume the choice after that generation, return to the normal route unless explicitly asked again, and never fall back to Sol when a requested debug run fails.
 - After pagination confirmation, ask whether the user wants Auto or wants to
   describe the design style, atmosphere, visual elements, and other creative
   requirements for the entire Deck. This stage never accepts a Slide-specific
   design requirement. Explain the limitation and ask the user to rewrite it as
   a whole-Deck direction.
-- The user reviews content pages only. Keep source wording, order, facts,
-  numbers, and evidence; a revision may change titles or page boundaries but
-  must not summarize or paraphrase the source.
+- The user reviews content pages only. Prioritize completing the workflow.
+  Condensation, paraphrasing, reordered material and rewritten headings are
+  acceptable. Do not block pagination for omissions or minor inaccuracies.
+  Stop only for empty/missing content or a clearly unrelated replacement article.
+  Keep the original material unchanged in storage and show the returned page plan
+  for confirmation; do not impose your own stricter fidelity check.
 - Confirmation is explicit. A vague acceptance, silence, or a request for
   another change is not confirmation.
 
@@ -135,6 +131,11 @@ completed result and is not an unknown outcome.
    Retain the returned `deck_id`. Do not submit the same material again for a
    split revision.
 
+## Keep page review visible
+
+For initial and revised proposals, render the complete returned `markdown`, every page in order, directly in the final reply (final channel), then ask for changes or explicit confirmation. Never leave the plan only in commentary, tool output, or a collapsed work section; a summary, link, or promise to show it later is insufficient. Repeat it in the final reply even if already shown in commentary.
+After interrupted display, "continue" means redisplay the existing plan before asking for confirmation, not confirm unseen content. Reuse the same draft's available Markdown. Do not confirm, resubmit, repropose, revise, or generate just to redisplay. If the original result is unavailable, state that limitation; never reconstruct it from memory or invent a retrieval command.
+
 ## Propose and review every page
 
 From the first user request only, retain one unique explicit positive
@@ -147,8 +148,8 @@ Run:
 
 `<dispatcher> split propose --deck-id <deck_id> --json`
 
-The command has no mode selector: the public server fixes Luna Low faithful
-splitting. This command is expected to outlive the shell tool's first yield. If
+The command has no mode selector: the public server owns Luna Low pagination.
+This command is expected to outlive the shell tool's first yield. If
 the tool reports `running`, `in_progress`, a `session_id`, or a `cell_id`, resume
 that exact command continuation as defined above and keep waiting for its
 process exit. Do not call the response missing, empty, malformed, or
@@ -174,12 +175,8 @@ or generated slide/PNG counts.
   error, display no unmatched proposal as acceptable, and do not confirm,
   generate, retry, resubmit, or repropose. Stop.
 
-Display exactly one complete matching proposal: the original proposal if it
-matches or there is no unique target; otherwise the successful revised
-Markdown. Display the complete returned `markdown`, including every proposed
-content page, in order. Do not show only a summary or selected pages. Keep
-the pending `draft_id` and ask whether the user wants a change. Stop after
-showing the proposal.
+Display exactly one complete matching proposal: the original proposal if it matches or there is no unique target; otherwise the successful revised Markdown. Display the complete returned `markdown`, including every proposed content page, in order. Do not show only a summary or selected pages.
+Keep the pending `draft_id` and ask whether the user wants a change. Stop after showing the proposal. Follow "Keep page review visible" for the final reply.
 
 ## Revise the same pending draft
 
@@ -203,17 +200,17 @@ revision form:
 - If the request positively and explicitly renames a title or heading, for example
   `\u6539\u6210 3 \u9875，\u5e76\u628a\u7b2c\u4e8c\u9875\u6807\u9898\u6539\u6210“\u8d44\u91d1\u6d41\u5411”`, use exactly:
   `<dispatcher> split revise --draft-id <draft_id> --instruction "<feedback>" --allow-title-changes --json`
-  Preserving or not changing titles never authorizes this flag. Without it, the
-  server keeps every source structural title visible and ordered. In both forms,
+  This flag remains compatible with existing clients; rewritten headings alone
+  are not a reason to reject a usable page plan. In both forms,
   pass the natural-language instruction unchanged, without reducing it to keywords.
   Never send `--instruction` and `--target-page-count` together. If the target
   page count cannot be reached safely, report the typed error and keep the
   pending draft unchanged.
 Do not submit material or propose a new draft. Display the complete revised
 markdown, including every page, and ask whether the user wants another change
-or explicit confirmation. A revision that drops, reorders, paraphrases, or
-changes a source fact is a failed result; report the error rather than silently
-accepting it.
+or explicit confirmation. Do not reject a returned revision for shortening,
+reordering, paraphrasing or minor inaccuracies. Only empty/missing content or
+a clearly unrelated article blocks pagination. Follow "Keep page review visible" for the final reply.
 
 ## Decide confirmation by meaning
 
@@ -395,38 +392,49 @@ re-echo the complete direction and ask the user to confirm again; make no
 mutation.
 
 After the final unqualified confirmation, start exactly one Image 5.0 generation.
-The public request uses the server-owned fixed Sol-director, Luna-image, and
-Sol-palette configuration. It returns one `batch_id` and one `run_ids` array.
+The normal public request uses the server-owned Sol-director, Luna-image, and Sol-palette configuration; the explicit test-only choice uses Luna-director, Luna-image, and Sol-palette once. The response returns one `batch_id`, one `run_ids` array, `config_name`, and a server-resolved `director` object.
 For Manual, `<verified_path>` is exactly the final path in the successful
 requirement helper receipt from the direction stage; pass that path directly
 and never rebuild it from the draft path or any other command.
 
 - On macOS, run exactly one held command. On Linux, run exactly one dispatcher
-  composition. Use exactly one of these mutually exclusive forms:
+  command. Both wrappers forward the operation to the same installed Python
+  CLI; they do not rebuild generate/follow/result in shell. Use exactly one of
+  these mutually exclusive forms:
 
   `<dispatcher> generate-and-follow --deck-id <deck_id> --auto --jsonl`
 
   `<dispatcher> generate-and-follow --deck-id <deck_id> --requirement-file "<verified_path>" --jsonl`
 
-  Its first stdout line is the exact JSON response to one `generate` request.
-  Its intermediate stdout is the one `status --run-id <run_id> --follow --jsonl`
-  continuation, and its final JSON line is the same-Run result readback.
+  For the explicit test-only Luna director choice, append `--debug-director luna-low` before `--jsonl`; omit it from normal generation.
+
+  This command is expected to outlive the shell tool's first response. If it reports `running`, `in_progress`, a `session_id`, or a `cell_id`, the follow process has not ended and nothing has failed. Do not send an agent message or interpret partial stdout. The only permitted next action is to resume that exact continuation with `write_stdin` or `wait`, as defined above, and repeat until the command returns a process exit.
+
+  Its first stdout line is the pre-submission business receipt, its second line
+  is the exact response to the one accepted `generate` request, its subsequent
+  lines are the one `status --run-id <run_id> --follow --jsonl` continuation,
+  and its final JSON line is the same-Run result readback.
   Do not issue a separate `generate`, `status`, or `result` command on macOS or Linux:
   `<dispatcher> generate --deck-id <deck_id> --auto --json`,
   `<dispatcher> generate --deck-id <deck_id> --requirement-file "<verified_path>" --json`, or
   `<dispatcher> status --run-id <run_id> --follow --jsonl`, or
   `<dispatcher> result --run-id <run_id> --json` as a substitute.
 
-Parse the generation response explicitly: verify that
-`run_ids` is an array of exactly one item, verify that its first item is a
-positive integer, then bind `run_id = run_ids[0]`. For example, when the
-response contains `{"batch_id": 1, "run_ids": [1]}`, the only valid bound
-value is `run_id = run_ids[0]` (that is, `1`). Never read a nonexistent
-top-level `run_id` from the generation response. If parsing fails, `run_ids` is
-missing, or its item is `undefined`, `null`, empty, non-integer, or
-non-positive, stop immediately and report the failure; you must not retry,
-reconfirm, or generate again. Do not ask a design question between confirmation
-and generation, and do not create a second run.
+Parse the first line before later output. Its nested `receipt` must be
+`image-pptgen.business-receipt/v1`, `generation_operation`,
+`submission_intent/prepared`, `receipt_index: 1`, `recovery_attempt: 0`, the confirmed positive Deck,
+and a canonical UUID `operation_id`, with no Run. Retain that operation token.
+Parse the second line as `generation_accepted/accepted`, `receipt_index: 2`, attempt 0,
+with the same operation and Deck. The CLI contract defines the exact fields.
+The generation response's `run_ids` must contain exactly one positive integer;
+bind `run_id = run_ids[0]`, never a nonexistent top-level Run. Missing,
+`undefined`, `null`, empty, non-integer, or non-positive identity stops without
+retry, reconfirmation, or another Run. The accepted receipt's Run must match.
+Every later receipt keeps that operation, Deck and Run with contiguous `receipt_index` values
+and attempt 0. Heartbeats have no business receipt and do not advance the index.
+
+Also verify the server-resolved `director` receipt: normal is `gpt-5.6-sol`, debug is `gpt-5.6-luna`, and both have `reasoning_effort: low`; nested and top-level `config_name` must match.
+Missing or mismatched identity is a failure: retain any returned Run identity, report the mismatch, and do not retry or replace the Run.
 
 ## Follow one Run continuously
 
@@ -449,26 +457,21 @@ start a second status or result command. A follow failure, missing continuation,
 malformed JSONL, missing terminal event, or mismatched Run is a stopped failure:
 do not retry confirmation or generation.
 
-After that one command exits, read the last grounded status event before the
-final result line. The terminal event's `run_id` must equal the bound `run_id`,
-and `source_facts.run_status`
-must be one of the documented terminal states: `completed`,
-`completed_with_failures`, `failed`, `interrupted`, or `timed_out`. `queued`,
-`pending`, `running`, `generation_started`, and `in_progress` are not terminal
-and cannot justify a result or completion. Do not start a second follow
-process, poll with unrelated commands, or infer completion from elapsed time.
-Surface each grounded update in business language. Preserve the exact
-`task_progress` items and `current_activity`; for heartbeats, keep the message
-brief and include the elapsed follow time. Never invent hidden design
-reasoning, page content, provider facts, or success.
+After exit, the last grounded status before the result must carry
+`follow_terminal`; its outcome, `backend_status`, `source_facts.run_status`, and
+bound Run must agree. Terminal states are `completed`,
+`completed_with_failures`, `failed`, `interrupted`, or `timed_out`; queued or
+running states cannot justify delivery. Do not poll separately or infer success.
+Surface grounded updates in business language, preserving `task_progress` and
+`current_activity`; keep heartbeats brief and never invent provider facts.
 
 ## Return the same-Run result
 
-After successful terminal follow, the same `generate-and-follow` command automatically reads the result
-once for the same `run_id`; parse its final JSON line. Never ask for
-another approval or offer whole-Deck regeneration because a separate result
-command was blocked. A readback failure preserves the existing Run.
-
+The same `generate-and-follow` command automatically reads the same Run once.
+Its final line must carry the next-index `result_delivered` receipt consistent
+with original `platform_status` and projected `status`. One complete ledger has
+one accepted generation, terminal follow, and delivery. Never ask for another
+approval or regenerate after readback failure; preserve the existing Run.
 For a completed Run, this writes a Run-scoped offline Preview bundle while
 the managed runtime is still available. The returned `preview_url` is
 a `file:` URL for its `index.html`, and `download_url` is the matching

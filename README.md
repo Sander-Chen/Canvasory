@@ -34,7 +34,7 @@ Give Codex plain text or Markdown. Canvasory does not accept PDF, image, screens
 
 ### 2. Review and confirm pagination
 
-Canvasory proposes a faithful page split before spending image-generation capacity. Review the page count, titles, and material boundaries; ask for revisions if needed. Then explicitly confirm the pagination. This confirmation does not start generation.
+Canvasory proposes a page split before spending image-generation capacity. The complete plan appears directly in the final reply, including after revisions, so it remains readable without expanding the work details. Review the page count, titles, and content; ask for revisions if needed. Then explicitly confirm the pagination. This confirmation does not start generation.
 
 ### 3. Choose and confirm a creative direction
 
@@ -80,7 +80,7 @@ See [demo provenance](docs/demo/PROVENANCE.md) for source identity and file hash
 
 | Path | Responsibility |
 | --- | --- |
-| `skills/generate-image-presentation/` | Codex Skill and guided presentation workflow |
+| `skills/canvasory/` | Codex Skill and guided presentation workflow |
 | `packages/pptgen_toolkit/` | CLI client and static Preview packaging |
 | `backend/` | Pagination, generation, state, audit, and artifacts |
 | `frontend/` | Preview and local review interface source |

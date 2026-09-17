@@ -1,0 +1,67 @@
+#!/usr/bin/env sh
+# Resolve Image PPTGen from the supported per-user install roots.  This helper
+# intentionally never falls back to PATH: Codex Desktop may be launched before
+# shell profile changes are available to its process environment.
+set -eu
+
+fail() {
+  printf '%s\n' "$1" >&2
+  exit 3
+}
+
+protocol_error() {
+  printf '%s\n' "{\"error\":\"platform_error\",\"message\":\"$1\"}" >&2
+  exit 4
+}
+
+# The installed CLI owns one atomic generate-and-follow operation. Reject the
+# raw mutation verb before resolving a runtime so an Agent that skips the
+# separate direction-confirmation turn cannot create an orphan Run.
+if [ "${1:-}" = "generate" ]; then
+  protocol_error "raw generate is unavailable through the Skill dispatcher; confirm the direction in a separate user turn, then use generate-and-follow"
+fi
+
+if [ -n "${IMAGE_PPTGEN_CLI:-}" ]; then
+  cli=$IMAGE_PPTGEN_CLI
+  case "$cli" in
+    /*) ;;
+    *) fail '{"error":"platform_unavailable","message":"IMAGE_PPTGEN_CLI must be an absolute executable path."}' ;;
+  esac
+  [ -f "$cli" ] && [ -x "$cli" ] || fail '{"error":"platform_unavailable","message":"Image PPTGen CLI is unavailable; install it or set IMAGE_PPTGEN_CLI to an absolute executable path."}'
+  exec "$cli" "$@"
+fi
+
+[ -n "${HOME:-}" ] || fail '{"error":"platform_unavailable","message":"Image PPTGen CLI is unavailable; install it or set IMAGE_PPTGEN_CLI to an absolute executable path."}'
+
+case "$(/usr/bin/uname -s 2>/dev/null || true)" in
+  Darwin)
+    primary="$HOME/.codex/bin/image-pptgen"
+    compatible="$HOME/.local/bin/image-pptgen"
+    install_root="${IMAGE_PPTGEN_INSTALL_ROOT:-$HOME/.codex/image-pptgen}"
+    held_command="$install_root/current/macos/image-pptgen-held-command.sh"
+
+    # Codex Desktop tasks are sandboxed and cannot reliably register a user
+    # launchd job. Keep every Skill-managed command under the current shell
+    # parent instead. The installed CLI owns generate/follow/result composition.
+    case "${1:-}" in
+      doctor|material|split|status|result|generate-and-follow)
+        [ -f "$held_command" ] && [ -x "$held_command" ] || fail '{"error":"platform_unavailable","message":"Image PPTGen macOS held command helper is unavailable."}'
+        exec "$held_command" "$@"
+        ;;
+    esac
+    ;;
+  Linux)
+    primary="$HOME/.local/bin/image-pptgen"
+    compatible="$HOME/.codex/bin/image-pptgen"
+    ;;
+  *) fail '{"error":"platform_unavailable","message":"Image PPTGen dispatcher supports only macOS and Linux."}' ;;
+esac
+
+if [ -f "$primary" ] && [ -x "$primary" ]; then
+  exec "$primary" "$@"
+fi
+if [ -f "$compatible" ] && [ -x "$compatible" ]; then
+  exec "$compatible" "$@"
+fi
+
+fail '{"error":"platform_unavailable","message":"Image PPTGen CLI is unavailable; install it or set IMAGE_PPTGEN_CLI to an absolute executable path."}'

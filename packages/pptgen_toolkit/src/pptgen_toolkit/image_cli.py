@@ -15,6 +15,14 @@ from urllib import error, parse, request
 from . import cli as shared_cli
 from .client import PlatformError, PlatformUnavailable
 from .image_client import ImagePptgenClient
+from .image_operation import (
+    BusinessReceiptError,
+    GenerationReceiptSequence,
+    deck_receipt,
+    run_read_receipt,
+    terminal_outcome,
+    with_receipt,
+)
 from .static_preview_bundle import BundlePage, write_static_preview_bundle
 
 
@@ -76,6 +84,31 @@ def _parser() -> argparse.ArgumentParser:
         help="UTF-8 file with the exact confirmed Deck-wide design direction",
     )
     generate.add_argument("--json", action="store_true", required=True)
+    # Hidden debugging-only seam: the only accepted value is the exact
+    # server-owned Luna Low director combination.  It stays out of the public
+    # help and contract, and its absence keeps the normal Sol Low route.
+    generate.add_argument(
+        "--debug-director",
+        dest="debug_director",
+        choices=("luna-low",),
+        help=argparse.SUPPRESS,
+    )
+
+    composite = subcommands.add_parser(
+        "generate-and-follow",
+        help="Start one Image generation and deliver that same Run",
+    )
+    composite.add_argument("--deck-id", required=True, type=int)
+    composite_intent = composite.add_mutually_exclusive_group(required=True)
+    composite_intent.add_argument("--auto", action="store_true")
+    composite_intent.add_argument("--requirement-file", type=Path)
+    composite.add_argument("--jsonl", action="store_true", required=True)
+    composite.add_argument(
+        "--debug-director",
+        dest="debug_director",
+        choices=("luna-low",),
+        help=argparse.SUPPRESS,
+    )
 
     status = subcommands.add_parser("status", help="Follow Image generation progress")
     status.add_argument("--run-id", required=True, type=int)
@@ -140,7 +173,12 @@ def _read_requirement_text(path: Path) -> str:
     return text
 
 
-def _run_status_follow(client: ImagePptgenClient, args: argparse.Namespace) -> int:
+def _run_status_follow(
+    client: ImagePptgenClient,
+    args: argparse.Namespace,
+    *,
+    receipt_sequence: GenerationReceiptSequence | None = None,
+) -> int:
     try:
         interval = float(os.environ.get("IMAGE_PPTGEN_STATUS_INTERVAL_SECONDS", "3"))
     except ValueError:
@@ -180,9 +218,27 @@ def _run_status_follow(client: ImagePptgenClient, args: argparse.Namespace) -> i
                     "milestone": False,
                 }
             )
+        backend_status = run_status["status"]
+        if backend_status not in {"queued", "pending", "running"}:
+            receipt = (
+                receipt_sequence.next(
+                    "follow_terminal",
+                    outcome=terminal_outcome(backend_status),
+                    run_id=args.run_id,
+                    backend_status=str(backend_status),
+                )
+                if receipt_sequence is not None
+                else run_read_receipt(
+                    "follow_terminal",
+                    run_id=args.run_id,
+                    outcome=terminal_outcome(backend_status),
+                    backend_status=str(backend_status),
+                )
+            )
+            provisional = with_receipt(provisional, receipt)
         _emit(provisional)
         previous_facts = facts
-        if run_status["status"] not in {"queued", "pending", "running"}:
+        if backend_status not in {"queued", "pending", "running"}:
             return 0
         time.sleep(interval)
 
@@ -367,6 +423,32 @@ def _write_static_preview(
     return destination
 
 
+def _generation_inputs(args: argparse.Namespace) -> tuple[str, str | None]:
+    if args.auto:
+        return "auto", None
+    return "manual", _read_requirement_text(args.requirement_file)
+
+
+def _emit_requirement_input_error(exc: Exception) -> int:
+    if isinstance(exc, ValueError):
+        _emit(
+            {
+                "error": "requirement_empty",
+                "message": (
+                    "The confirmed Deck direction file is empty; provide a "
+                    "UTF-8 text file"
+                ),
+            },
+            stream=sys.stderr,
+        )
+    else:
+        _emit(
+            {"error": "requirement_unreadable", "message": str(exc)},
+            stream=sys.stderr,
+        )
+    return 2
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
@@ -402,66 +484,198 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 2
             deck_id = client.create_deck(title=args.title, content=content)
             _emit(
-                {
+                with_receipt(
+                    {
                     "deck_id": deck_id,
                     "status": "material_accepted",
                     "title": args.title,
-                }
+                    },
+                    deck_receipt("material_accepted", deck_id=deck_id),
+                )
             )
             return 0
 
         if args.command == "split" and args.split_command == "propose":
-            _emit(_split_projection(client.create_split_draft(deck_id=args.deck_id)))
+            projection = _split_projection(client.create_split_draft(deck_id=args.deck_id))
+            _emit(
+                with_receipt(
+                    projection,
+                    deck_receipt(
+                        "split_proposed",
+                        deck_id=projection["deck_id"],
+                        draft_id=projection["draft_id"],
+                    ),
+                )
+            )
             return 0
 
         if args.command == "split" and args.split_command == "revise":
             if args.allow_title_changes and args.instruction is None:
                 parser.error("--allow-title-changes requires --instruction")
+            projection = _split_projection(
+                client.revise_split_draft(
+                    draft_id=args.draft_id,
+                    instruction=args.instruction,
+                    target_page_count=args.target_page_count,
+                    allow_title_changes=args.allow_title_changes,
+                )
+            )
             _emit(
-                _split_projection(
-                    client.revise_split_draft(
-                        draft_id=args.draft_id,
-                        instruction=args.instruction,
-                        target_page_count=args.target_page_count,
-                        allow_title_changes=args.allow_title_changes,
-                    )
+                with_receipt(
+                    projection,
+                    deck_receipt(
+                        "split_revised",
+                        deck_id=projection["deck_id"],
+                        draft_id=projection["draft_id"],
+                    ),
                 )
             )
             return 0
 
         if args.command == "split" and args.split_command == "confirm":
-            _emit(client.confirm_split_draft(draft_id=args.draft_id))
+            confirmation = client.confirm_split_draft(draft_id=args.draft_id)
+            _emit(
+                with_receipt(
+                    confirmation,
+                    deck_receipt(
+                        "split_confirmed",
+                        deck_id=confirmation["deck_id"],
+                        draft_id=confirmation["draft_id"],
+                    ),
+                )
+            )
             return 0
 
         if args.command == "generate":
-            if args.auto:
-                _emit(client.start_generation(deck_id=args.deck_id, mode="auto"))
-                return 0
+            director_debug = getattr(args, "debug_director", None)
             try:
-                requirement_text = _read_requirement_text(args.requirement_file)
-            except (OSError, UnicodeError) as exc:
-                _emit(
-                    {"error": "requirement_unreadable", "message": str(exc)},
-                    stream=sys.stderr,
-                )
-                return 2
-            except ValueError:
-                _emit(
-                    {
-                        "error": "requirement_empty",
-                        "message": (
-                            "The confirmed Deck direction file is empty; provide a "
-                            "UTF-8 text file"
-                        ),
-                    },
-                    stream=sys.stderr,
-                )
-                return 2
-            _emit(
-                client.start_generation(
+                mode, requirement_text = _generation_inputs(args)
+            except (OSError, UnicodeError, ValueError) as exc:
+                return _emit_requirement_input_error(exc)
+            sequence = GenerationReceiptSequence(deck_id=args.deck_id)
+            try:
+                generation = client.start_generation(
                     deck_id=args.deck_id,
-                    mode="manual",
+                    mode=mode,
                     requirement_text=requirement_text,
+                    director_debug=director_debug,
+                )
+            except PlatformUnavailable:
+                _emit(
+                    with_receipt(
+                        {"deck_id": args.deck_id, "status": "submission_unknown"},
+                        sequence.next("submission_intent", outcome="unknown"),
+                    )
+                )
+                raise
+            run_id = generation["run_ids"][0]
+            _emit(
+                with_receipt(
+                    generation,
+                    sequence.next(
+                        "generation_accepted", outcome="accepted", run_id=run_id
+                    ),
+                )
+            )
+            return 0
+
+        if args.command == "generate-and-follow":
+            director_debug = getattr(args, "debug_director", None)
+            try:
+                mode, requirement_text = _generation_inputs(args)
+            except (OSError, UnicodeError, ValueError) as exc:
+                return _emit_requirement_input_error(exc)
+            sequence = GenerationReceiptSequence(deck_id=args.deck_id)
+            _emit(
+                with_receipt(
+                    {"deck_id": args.deck_id, "status": "submission_intent"},
+                    sequence.next("submission_intent", outcome="prepared"),
+                )
+            )
+            try:
+                generation = client.start_generation(
+                    deck_id=args.deck_id,
+                    mode=mode,
+                    requirement_text=requirement_text,
+                    director_debug=director_debug,
+                )
+            except PlatformUnavailable:
+                _emit(
+                    with_receipt(
+                        {"deck_id": args.deck_id, "status": "submission_unknown"},
+                        sequence.next("submission_intent", outcome="unknown"),
+                    )
+                )
+                raise
+            run_id = generation["run_ids"][0]
+            _emit(
+                with_receipt(
+                    generation,
+                    sequence.next(
+                        "generation_accepted", outcome="accepted", run_id=run_id
+                    ),
+                )
+            )
+            follow_args = argparse.Namespace(
+                run_id=run_id,
+                after_activity_cursor=None,
+            )
+            try:
+                _run_status_follow(
+                    client,
+                    follow_args,
+                    receipt_sequence=sequence,
+                )
+            except PlatformUnavailable:
+                _emit(
+                    with_receipt(
+                        {"run_id": run_id, "status": "observation_interrupted"},
+                        sequence.next(
+                            "observation_interrupted",
+                            outcome="interrupted",
+                            run_id=run_id,
+                            backend_status="unknown",
+                        ),
+                    )
+                )
+                raise
+            try:
+                detail = client.get_run_detail(run_id=run_id)
+                result = _result_with_public_urls(
+                    detail,
+                    base_url=args.base_url,
+                    run_id=run_id,
+                )
+            except PlatformUnavailable:
+                _emit(
+                    with_receipt(
+                        {"run_id": run_id, "status": "delivery_interrupted"},
+                        sequence.next(
+                            "delivery_interrupted",
+                            outcome="interrupted",
+                            run_id=run_id,
+                            backend_status="unknown",
+                        ),
+                    )
+                )
+                raise
+            result_status = str(result.get("status") or "unknown")
+            backend_status = str(result.get("platform_status") or "unknown")
+            try:
+                outcome = terminal_outcome(result_status)
+            except BusinessReceiptError as exc:
+                raise PlatformError(
+                    "Image result stayed non-terminal after terminal follow"
+                ) from exc
+            _emit(
+                with_receipt(
+                    result,
+                    sequence.next(
+                        "result_delivered",
+                        outcome=outcome,
+                        run_id=run_id,
+                        backend_status=backend_status,
+                    ),
                 )
             )
             return 0
@@ -484,9 +698,26 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
                 result["static_preview_path"] = str(preview_path)
                 result["static_preview_url"] = preview_path.as_uri()
-            _emit(
-                result
-            )
+            result_status = str(result.get("status") or "unknown")
+            backend_status = str(result.get("platform_status") or "unknown")
+            if result_status in {"queued", "pending", "running", "in_progress"}:
+                _emit(result)
+            else:
+                try:
+                    outcome = terminal_outcome(result_status)
+                except BusinessReceiptError as exc:
+                    raise PlatformError("Image result has an invalid terminal status") from exc
+                _emit(
+                    with_receipt(
+                        result,
+                        run_read_receipt(
+                            "result_delivered",
+                            run_id=args.run_id,
+                            outcome=outcome,
+                            backend_status=backend_status,
+                        ),
+                    )
+                )
             return 0
     except PlatformUnavailable as exc:
         _emit(

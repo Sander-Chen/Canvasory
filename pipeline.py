@@ -2840,6 +2840,42 @@ _SOURCE_QUALIFIER_SCOPED_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("range", _SOURCE_QUALIFIER_RANGE_SCOPE),
 )
 
+_ON_SLIDE_TEXT_BLOCK = re.compile(
+    r"<On_Slide_Text\b[^>]*>(?P<text>.*?)</On_Slide_Text>",
+    re.IGNORECASE | re.DOTALL,
+)
+_XML_TAG = re.compile(r"<[^>]+>")
+_SOURCE_SENSITIVE_TOKEN = re.compile(
+    r"(?<![\w])(?:"
+    # Hyphenated English prose is not a machine identifier. Require a digit
+    # or underscore; keep dates, measurements and hashes independently checked.
+    r"(?=[A-Za-z0-9_-]*(?:\d|_))[A-Za-z][A-Za-z0-9]*(?:[_-][A-Za-z0-9]+)+|"
+    r"[A-Fa-f0-9]{8,}|"
+    r"\d{4}-\d{1,2}-\d{1,2}|"
+    r"\d+(?:\.\d+)?\s*(?:%|GB|MB|TB|KB|GiB|MiB|TiB|KiB|USD|EUR|CNY)|"
+    r"\d{2,}(?:\.\d+)?"
+    r")(?![\w])",
+    re.IGNORECASE,
+)
+_SOURCE_ATTRIBUTION_MARKER = re.compile(
+    r"\b(?:source|according\s+to|survey|study|report|research)\b",
+    re.IGNORECASE,
+)
+_FACTUAL_GROUNDING_GUARD = (
+    "# Factual Grounding Guard\n"
+    "Treat the supplied slide source as the only authority for factual specificity. "
+    "Do not invent or embellish names, organizations, source attributions, dates, "
+    "percentages, measurements, monetary values, job or record identifiers, hashes, "
+    "statistics, quotations, or other concrete claims. Do not create realistic-looking "
+    "sample data. If the source lacks a specific value, use qualitative wording or an "
+    "unlabelled visual primitive instead. You may freely choose visual structure, layout, "
+    "hierarchy, typography, color, and metaphor as long as they do not add factual content."
+    " Layout instructions are not on-slide copy. Put placement, paragraphing, and "
+    "emphasis instructions in Module_Blueprint or Typography_Voice, outside "
+    "On_Slide_Text. On_Slide_Text contains only literal words to display, without "
+    "placement labels or explanations. Do not render layout annotations as text."
+)
+
 # Native Image receives the visual blueprint as its business prompt.  These terms
 # identify the narrowly scoped case where a historical fact was expanded into a
 # direct-harm composition rather than an archival or symbolic presentation.
@@ -2985,6 +3021,61 @@ def _source_qualifier_guard(slide_content: object) -> str:
     )
 
 
+def _on_slide_text(rendered_xml: object) -> str:
+    if not isinstance(rendered_xml, str):
+        return ""
+    blocks = [match.group("text") for match in _ON_SLIDE_TEXT_BLOCK.finditer(rendered_xml)]
+    return "\n".join(_XML_TAG.sub(" ", block) for block in blocks)
+
+
+def _normalized_fact_text(value: object) -> str:
+    return re.sub(r"\s+", "", str(value or "")).casefold()
+
+
+def _validate_native_factual_grounding(slide_content: object, rendered_xml: object) -> None:
+    """Reject source-sensitive on-slide facts that are absent from the slide source."""
+    on_slide_text = _on_slide_text(rendered_xml)
+    if not on_slide_text:
+        return
+    normalized_source = _normalized_fact_text(slide_content)
+    unsupported: list[str] = []
+    for match in _SOURCE_SENSITIVE_TOKEN.finditer(on_slide_text):
+        token = match.group(0).strip()
+        if re.fullmatch(r"0[1-9]", token):
+            continue
+        if _normalized_fact_text(token) not in normalized_source:
+            unsupported.append(token)
+    for match in _SOURCE_ATTRIBUTION_MARKER.finditer(on_slide_text):
+        marker = match.group(0).strip()
+        if _normalized_fact_text(marker) not in normalized_source:
+            unsupported.append(marker)
+    unsupported = list(dict.fromkeys(unsupported))
+    if unsupported:
+        raise ValueError(
+            "native_image_unsupported_factual_tokens:" + ",".join(unsupported)
+        )
+
+
+def _native_director_prompt_with_factual_grounding(
+    rendered_prompt: str,
+    slide_content: object,
+) -> str:
+    """Bind the non-negotiable factual boundary to the director request."""
+    del slide_content  # The rendered director template already contains Slide-Content.
+    return f"{rendered_prompt}\n\n{_FACTUAL_GROUNDING_GUARD}"
+
+
+def _native_factual_grounding_renderer_guard(slide_content: object) -> str:
+    source = _non_graphic_historical_factual_text(str(slide_content or "").strip())
+    return (
+        f"{_FACTUAL_GROUNDING_GUARD}\n"
+        "Render on-slide factual text only from the blueprint's On_Slide_Text. "
+        "The source block below is for verification only; do not render it wholesale.\n\n"
+        "# Authoritative Slide Source\n"
+        f"{source}"
+    )
+
+
 def _validate_source_qualifiers_in_xml(slide_content: object, rendered_xml: object) -> None:
     """Fail closed before native rendering if source qualification disappeared."""
     lines = _source_qualifier_lines(slide_content)
@@ -3050,15 +3141,19 @@ def _native_renderer_prompt_with_source_qualifier(
         not isinstance(rendered_xml, str) or not rendered_xml.strip()
     ):
         _validate_source_qualifiers_in_xml(slide_content, rendered_xml)
+    _validate_native_factual_grounding(slide_content, rendered_xml)
     non_graphic_guard = _non_graphic_historical_visualization_guard(rendered_xml, slide_content)
-    if not source_qualifier_guard and not non_graphic_guard:
-        return rendered_xml
     renderer_blueprint = (
         _non_graphic_historical_renderer_blueprint(rendered_xml)
         if non_graphic_guard
         else rendered_xml
     )
-    guards = [guard for guard in (source_qualifier_guard, non_graphic_guard) if guard]
+    factual_grounding_guard = _native_factual_grounding_renderer_guard(slide_content)
+    guards = [
+        guard
+        for guard in (source_qualifier_guard, non_graphic_guard, factual_grounding_guard)
+        if guard
+    ]
     renderer_prompt = "\n\n".join([renderer_blueprint, *guards])
     if source_qualifier_guard:
         _validate_source_qualifiers_in_xml(slide_content, renderer_prompt)
@@ -5031,6 +5126,14 @@ def run_image_route(context) -> ImageRouteOutcome:
         )
         source_qualifier_guard = ""
         if native_three_zero_renderer:
+            prompt = _native_director_prompt_with_factual_grounding(
+                prompt,
+                rs.get("slide_content"),
+            )
+            director_prompt_lineage = {
+                **director_prompt_lineage,
+                "rendered_prompt_sha256": _sha256_text(prompt),
+            }
             source_qualifier_guard = _source_qualifier_guard(rs.get("slide_content"))
             if source_qualifier_guard:
                 prompt = f"{prompt}\n\n{source_qualifier_guard}"

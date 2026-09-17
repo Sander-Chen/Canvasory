@@ -68,7 +68,8 @@ _PUBLIC_SPLIT_CHILD_TIMEOUT_SECONDS = 840
 _PUBLIC_SPLIT_ADMISSION_TIMEOUT_SECONDS = 30
 _PLAIN_TEXT_SOURCE_UNIT_TARGET_CHARS = 1200
 _PLAIN_TEXT_SOURCE_UNIT_MAX_CHARS = 1800
-_PLAIN_TEXT_SAFE_BOUNDARY_PUNCTUATION = frozenset("\u3002\uff01\uff1f!?\uff1b;")
+_PLAIN_TEXT_SENTENCE_TERMINATORS = frozenset(".!?\u3002\uff01\uff1f")
+_PLAIN_TEXT_CLOSING_PUNCTUATION = frozenset("\"'\u2019\u201d)]}")
 
 # Public Image faithful split may classify one very specific class of failed
 # Codex calls as a transport-only failure.  The classifier is intentionally
@@ -270,6 +271,9 @@ def _run_codex_split(
         runner_kwargs["extra_config"] = list(_PUBLIC_SPLIT_EXTRA_CONFIG)
         runner_kwargs["timeout_seconds"] = _PUBLIC_SPLIT_CHILD_TIMEOUT_SECONDS
         runner_kwargs["admission_timeout_seconds"] = _PUBLIC_SPLIT_ADMISSION_TIMEOUT_SECONDS
+        if stage_id == "deck-split-topic-check":
+            runner_kwargs["timeout_seconds"] = 45
+            runner_kwargs["admission_timeout_seconds"] = 10
     result = asyncio.run(
         run_codex_exec_json(**runner_kwargs)
     )
@@ -325,6 +329,15 @@ def _prompt_for_split(
         return prompt
     source = str(source_content or "")
     prefer_explicit_h1 = _is_public_split_execution(config)
+    if prefer_explicit_h1:
+        prompt = (
+            "Create coherent presentation pages about the source's topic. Prioritize "
+            "a usable complete pagination, not verbatim preservation. Condensation, "
+            "paraphrasing and new headings are allowed. Do not return empty pages "
+            "or replace the material with an unrelated article. Keep the source language.\n\n"
+            f"Revision request: {boundary_instruction or 'Choose suitable page boundaries.'}\n\n"
+            f"Source material:\n{source}\n"
+        )
     source_sections = (
         (split_by_explicit_h1(source) if prefer_explicit_h1 else None)
         or split_by_markdown(source)
@@ -386,13 +399,31 @@ def _markdown_structural_units(
 
 
 def _plain_text_safe_boundaries(content: str) -> list[int]:
-    return [
-        index
-        for index in range(1, len(content))
-        if content[index - 1].isspace()
-        or content[index].isspace()
-        or content[index - 1] in _PLAIN_TEXT_SAFE_BOUNDARY_PUNCTUATION
-    ]
+    """Return complete sentence and paragraph boundaries for plain text."""
+    boundaries = {
+        match.end()
+        for match in re.finditer(r"\n[ \t]*\n+", content)
+    }
+    for index, character in enumerate(content):
+        if character not in _PLAIN_TEXT_SENTENCE_TERMINATORS:
+            continue
+        if character == ".":
+            line_start = content.rfind("\n", 0, index) + 1
+            if content[line_start:index].strip().isdigit():
+                continue
+        boundary = index + 1
+        while (
+            boundary < len(content)
+            and content[boundary] in _PLAIN_TEXT_CLOSING_PUNCTUATION
+        ):
+            boundary += 1
+        if (
+            character in "\u3002\uff01\uff1f"
+            or boundary == len(content)
+            or content[boundary].isspace()
+        ):
+            boundaries.add(boundary)
+    return sorted(boundaries)
 
 
 def _plain_text_unit(unit_content: str, index: int) -> dict[str, str]:
@@ -404,7 +435,7 @@ def _plain_text_unit(unit_content: str, index: int) -> dict[str, str]:
 
 
 def _plain_text_atomic_units(source: str) -> list[dict[str, str]]:
-    """Split ordinary plain text at every existing non-empty safe boundary."""
+    """Split ordinary plain text at complete sentence or paragraph boundaries."""
     content = str(source or "").strip()
     if not content:
         return []
@@ -432,7 +463,7 @@ def _ordered_source_units(
 
     Markdown keeps its established H3-then-H2 units unless Public Image
     explicitly prefers two or more fence/comment-safe H1 page sections.
-    Plain text is split only at existing whitespace or sentence punctuation,
+    Plain text is split only at complete sentence or paragraph boundaries,
     so concatenating page bodies preserves the exact ordered token stream
     while giving the boundary model bounded immutable units to group.
     """

@@ -149,13 +149,18 @@ def validate_palette_xml(xml: str) -> str:
     stripped = xml.strip()
     if stripped.startswith("```"):
         stripped = stripped.strip("`").removeprefix("xml").strip()
-    if not stripped.startswith("<pptPalette") or not stripped.endswith("</pptPalette>"):
-        raise ColorExtractionError("Palette XML must be a single <pptPalette> document")
 
     try:
         root = ElementTree.fromstring(stripped)
     except ElementTree.ParseError as exc:
         raise ColorExtractionError(f"Palette XML is invalid: {exc}") from exc
+
+    document = stripped
+    if document.startswith("<?xml"):
+        declaration_end = document.find("?>")
+        document = document[declaration_end + 2 :].strip()
+    if not document.startswith("<pptPalette") or not document.endswith("</pptPalette>"):
+        raise ColorExtractionError("Palette XML must be a single <pptPalette> document")
 
     children = list(root)
     if root.tag != "pptPalette" or [child.tag for child in children] != ["textBackground", "accents"]:
@@ -165,4 +170,4 @@ def validate_palette_xml(xml: str) -> str:
             raise ColorExtractionError("Palette XML may only contain color nodes")
         if color.attrib and set(color.attrib) != {"name", "hex", "rgb", "luminance"}:
             raise ColorExtractionError("Each color must include name, hex, rgb, and luminance")
-    return stripped
+    return document

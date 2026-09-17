@@ -15,7 +15,7 @@ from backend.services.platform_runtime import write_private_json
 
 IMAGE_PRODUCT = "image-pptgen"
 IMAGE_SERVICE = "image-pptgen-server"
-IMAGE_SKILL = "generate-image-presentation"
+IMAGE_SKILL = "canvasory"
 IMAGE_SURFACE = "public_image_3_0"
 IMAGE_DATA_NAMESPACE = "image-pptgen"
 IMAGE_CONFIG_NAMESPACE = "image-pptgen"

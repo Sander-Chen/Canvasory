@@ -129,6 +129,7 @@ class SkillActivation(NamedTuple):
     target: Path
     backup: Path | None
     changed: bool
+    legacy_backup: Path | None = None
 
 
 class ActivationSnapshot(NamedTuple):
@@ -1124,15 +1125,27 @@ def _install_wrappers(layout: InstallLayout) -> None:
 def _install_skill(
     layout: InstallLayout, release: Path, install_id: str
 ) -> SkillActivation:
-    source = release / "app" / "skills" / "generate-image-presentation"
+    source = release / "app" / "skills" / "canvasory"
+    if not source.is_dir():
+        source = release / "app" / "skills" / "generate-image-presentation"
     if not source.is_dir():
         raise InstallerError("skill_missing", "release does not contain the Image skill")
-    target = layout.skill_home / "generate-image-presentation"
-    if _same_tree(source, target):
+    target = layout.skill_home / source.name
+    legacy_name = "generate-image-presentation" if source.name == "canvasory" else "canvasory"
+    legacy = layout.skill_home / legacy_name
+    if _same_tree(source, target) and not (legacy.exists() or legacy.is_symlink()):
         return SkillActivation(target, None, False)
-    staged = layout.skill_home / f".generate-image-presentation.new-{uuid.uuid4().hex}"
+    staged = layout.skill_home / f".canvasory.new-{uuid.uuid4().hex}"
     backup: Path | None = None
+    legacy_backup: Path | None = None
+    activated = False
     try:
+        if legacy.exists() or legacy.is_symlink():
+            metadata = legacy / "SKILL.md"
+            if legacy.is_symlink() or not metadata.is_file() or (
+                f"name: {legacy_name}" not in metadata.read_text(encoding="utf-8").splitlines()
+            ):
+                raise InstallerError("legacy_skill_conflict", "Unrecognized legacy Skill; preserved without modification")
         shutil.copytree(source, staged)
         if target.exists() or target.is_symlink():
             backup = layout.backups / (
@@ -1140,13 +1153,19 @@ def _install_skill(
             )
             os.replace(target, backup)
         os.replace(staged, target)
+        activated = True
+        if legacy.exists():
+            legacy_backup = layout.backups / f"generate-image-presentation.before-{install_id}-{uuid.uuid4().hex}"
+            os.replace(legacy, legacy_backup)
     except BaseException:
         if staged.exists() or staged.is_symlink():
             shutil.rmtree(staged, ignore_errors=True)
+        if activated:
+            os.replace(target, layout.backups / f"canvasory.failed-{uuid.uuid4().hex}")
         if backup is not None and backup.exists() and not (target.exists() or target.is_symlink()):
             os.replace(backup, target)
         raise
-    return SkillActivation(target, backup, True)
+    return SkillActivation(target, backup, True, legacy_backup)
 
 
 def _restore_skill(activation: SkillActivation, layout: InstallLayout) -> None:
@@ -1157,6 +1176,9 @@ def _restore_skill(activation: SkillActivation, layout: InstallLayout) -> None:
         os.replace(activation.target, failed)
     if activation.backup is not None:
         os.replace(activation.backup, activation.target)
+    if activation.legacy_backup is not None:
+        legacy_name = "generate-image-presentation" if activation.target.name == "canvasory" else "canvasory"
+        os.replace(activation.legacy_backup, layout.skill_home / legacy_name)
 
 
 def _quarantine_incomplete(layout: InstallLayout, path: Path, label: str) -> None:

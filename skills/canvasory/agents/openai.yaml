@@ -1,0 +1,6 @@
+interface:
+  display_name: "Canvasory"
+  short_description: "Turn your text into a visual presentation"
+  default_prompt: "Use $canvasory to review the page plan, confirm a visual direction, and deliver the presentation Preview and ZIP."
+policy:
+  allow_implicit_invocation: true

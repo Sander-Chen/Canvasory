@@ -49,6 +49,16 @@ NATIVE_IMAGE_5_0_SOL_DIRECTOR_CONFIG_NAME = (
     "Codex Native Image 5.0 Sol Low Director"
 )
 NATIVE_IMAGE_5_0_CONFIG_NAME = NATIVE_IMAGE_5_0_SOL_DIRECTOR_CONFIG_NAME
+# Debugging-only Image 5.0 director choice.  The public/default route always
+# keeps the Sol Low director above; only this hidden explicit selector value
+# creates and selects the server-owned Luna Low director combination, which
+# still renders with the Luna Low launcher and extracts palette with the Sol
+# Low director profile.
+NATIVE_IMAGE_5_0_LUNA_DIRECTOR_CONFIG_NAME = (
+    "Codex Native Image 5.0 Luna Low Director"
+)
+NATIVE_IMAGE_5_0_DIRECTOR_DEBUG_FIELD = "director_debug"
+NATIVE_IMAGE_5_0_DIRECTOR_DEBUG_VALUE = "luna-low"
 NATIVE_IMAGE_DIRECTOR_PROFILE_NAME = "Codex Native Image Director Sol Low"
 NATIVE_IMAGE_LUNA_DIRECTOR_PROFILE_NAME = "Codex Native Image Director Luna Low"
 NATIVE_IMAGE_LAUNCHER_PROFILE_NAME = "Codex Native Image Launcher Luna Low"
@@ -910,6 +920,8 @@ def _native_image_config_spec(config: dict[str, Any] | None) -> tuple[str, bool]
         return NATIVE_IMAGE_3_0_ROUTE, True
     if name == NATIVE_IMAGE_5_0_CONFIG_NAME:
         return NATIVE_IMAGE_5_0_ROUTE, True
+    if name == NATIVE_IMAGE_5_0_LUNA_DIRECTOR_CONFIG_NAME:
+        return NATIVE_IMAGE_5_0_ROUTE, True
     if (
         name == NATIVE_IMAGE_3_0_TERRA_E2E_CONFIG_NAME
         and image_pptgen_e2e_terra_low_enabled()
@@ -1132,6 +1144,71 @@ def ensure_native_image_combinations() -> dict[str, list[int]]:
         "created_profile_ids": created_profile_ids,
         "created_config_ids": created_config_ids,
     }
+
+
+def ensure_native_image_5_0_luna_director_config() -> int | None:
+    """Create the debugging-only Image 5.0 Luna Low director choice once.
+
+    The normal ``Codex Native Image 5.0 Sol Low Director`` combination is never
+    modified.  The managed debug combination keeps the Luna Low design director,
+    the Luna Low image launcher, and the Sol Low director profile for palette
+    extraction, and it always stays non-default so an ordinary generation keeps
+    selecting the public Sol Low route.  An existing debug combination is
+    reused as-is: callers revalidate it and fail closed instead of silently
+    repairing or replacing a persisted debugging choice.
+    """
+    db = dbmod.get_db()
+    try:
+        # Serialize the lazy check-and-create path. Config names are unique, but
+        # without a write lock two first-time requests can both observe absence
+        # and make the loser fail at INSERT instead of reusing the winner.
+        db.execute("BEGIN IMMEDIATE")
+        existing = db.execute(
+            "SELECT id FROM configs WHERE name = ? ORDER BY id",
+            (NATIVE_IMAGE_5_0_LUNA_DIRECTOR_CONFIG_NAME,),
+        ).fetchone()
+        if existing:
+            return int(existing["id"])
+
+        created_profile_ids: list[int] = []
+        profile_ids: dict[tuple[str, str], int] = {}
+        for spec in NATIVE_IMAGE_PROFILE_SPECS:
+            row = db.execute(
+                "SELECT id FROM model_profiles WHERE role = ? AND name = ?",
+                (spec.role, spec.name),
+            ).fetchone()
+            profile_ids[(spec.role, spec.name)] = (
+                int(row["id"])
+                if row
+                else _ensure_native_image_profile(db, spec, created_profile_ids)
+            )
+
+        def profile_row(role: str, name: str):
+            return db.execute(
+                "SELECT * FROM model_profiles WHERE id = ?",
+                (profile_ids[(role, name)],),
+            ).fetchone()
+
+        _ensure_native_image_config(
+            db,
+            name=NATIVE_IMAGE_5_0_LUNA_DIRECTOR_CONFIG_NAME,
+            route=NATIVE_IMAGE_5_0_ROUTE,
+            director=profile_row(
+                "image_designer", NATIVE_IMAGE_LUNA_DIRECTOR_PROFILE_NAME
+            ),
+            launcher=profile_row("image_generator", NATIVE_IMAGE_LAUNCHER_PROFILE_NAME),
+            palette=profile_row("image_designer", NATIVE_IMAGE_DIRECTOR_PROFILE_NAME),
+            include_director=True,
+            created_config_ids=[],
+        )
+        db.commit()
+        row = db.execute(
+            "SELECT id FROM configs WHERE name = ?",
+            (NATIVE_IMAGE_5_0_LUNA_DIRECTOR_CONFIG_NAME,),
+        ).fetchone()
+    finally:
+        db.close()
+    return int(row["id"]) if row else None
 
 
 def ensure_gpt_image_2_product_combinations() -> dict[str, list[int] | list[str]]:

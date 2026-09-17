@@ -207,10 +207,39 @@ def looks_like_image_only_gallery(document: str) -> bool:
 
 
 def _write_zip(destination: Path, *, directory: Path) -> None:
+    """Archive the ordered page PNGs as flat, root-level ``slide N.png`` members.
+
+    Only ``pages/page-NNN.png`` inputs become members, so the download carries the
+    slide images alone: the offline viewer, manifest, nested paths, and any sibling
+    ZIP stay out of the archive. Generated page numbers preserve the confirmed
+    page order even when the numeric width changes.
+    """
+
+    pages_dir = Path(directory) / "pages"
+    if not pages_dir.is_dir():
+        raise ValueError(f"static preview archive requires a pages directory: {pages_dir}")
+    numbered_pages: list[tuple[int, Path]] = []
+    for entry in pages_dir.iterdir():
+        if not entry.is_file() or entry.suffix != ".png":
+            continue
+        page_number = entry.stem.removeprefix("page-")
+        if not entry.stem.startswith("page-") or not page_number.isdigit():
+            raise ValueError(
+                f"static preview archive has an unexpected page PNG name: {entry.name}"
+            )
+        numbered_pages.append((int(page_number), entry))
+    page_files = [entry for _, entry in sorted(numbered_pages)]
+    if not page_files:
+        raise ValueError(f"static preview archive requires at least one page PNG in {pages_dir}")
+    slides: list[tuple[Path, str]] = []
+    for index, page_file in enumerate(page_files, start=1):
+        with page_file.open("rb") as handle:
+            if handle.read(len(PNG_SIGNATURE)) != PNG_SIGNATURE:
+                raise ValueError(f"static preview archive page {page_file.name} is not a PNG")
+        slides.append((page_file, f"slide {index}.png"))
     with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED) as archive:
-        for member in sorted(directory.rglob("*")):
-            if member.is_file() and member.suffix != ".zip":
-                archive.write(member, member.relative_to(directory).as_posix())
+        for page_file, member_name in slides:
+            archive.write(page_file, member_name)
 
 
 def _require_run_id(run_id: int) -> int:

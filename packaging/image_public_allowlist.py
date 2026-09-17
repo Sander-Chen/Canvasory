@@ -17,7 +17,7 @@ from typing import Iterable, Mapping
 
 PUBLIC_TARGET_PLATFORMS = ("linux-x86_64", "macos-arm64")
 PUBLIC_FALLBACK_PLATFORMS = ("macos-arm64",)
-IMAGE_SKILL = "generate-image-presentation"
+IMAGE_SKILL = "canvasory"
 
 APP_PYTHON_FILES = (
     "server.py",

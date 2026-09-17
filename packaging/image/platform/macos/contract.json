@@ -7,7 +7,7 @@
     "required_members": [
       "app/runtime_manager.py",
       "app/image-launcher.py",
-      "app/skills/generate-image-presentation/SKILL.md",
+      "app/skills/canvasory/SKILL.md",
       "app/packages/pptgen_toolkit/pyproject.toml",
       "app/packages/pptgen_toolkit/dist/image_pptgen_toolkit-0.1.0-py3-none-any.whl",
       "macos/requirements.lock"

@@ -14,6 +14,28 @@ from .client import PlatformError, PptgenClient
 
 
 IMAGE_5_0_CONFIG_NAME = "Codex Native Image 5.0 Sol Low Director"
+# Debugging-only Image 5.0 design-director choice.  The public default always
+# stays on the Sol Low director above; only this hidden explicit value selects
+# the server-owned Luna Low director combination for one request batch.
+IMAGE_5_0_LUNA_DIRECTOR_CONFIG_NAME = "Codex Native Image 5.0 Luna Low Director"
+IMAGE_DIRECTOR_DEBUG_FIELD = "director_debug"
+IMAGE_DIRECTOR_DEBUG_VALUES = ("luna-low",)
+IMAGE_5_0_ROUTE = "image_5_0"
+IMAGE_5_0_DIRECTOR_EFFORT = "low"
+# The server-owned managed combination selected for one request decides the
+# actual design-director identity.  The receipt only ever reports the identity
+# the server resolved for the created batch and Run, never the requested
+# selector, so a requested debug value cannot masquerade as the real one.
+IMAGE_5_0_DIRECTOR_IDENTITIES = {
+    IMAGE_5_0_CONFIG_NAME: ("gpt-5.6-sol", IMAGE_5_0_DIRECTOR_EFFORT),
+    IMAGE_5_0_LUNA_DIRECTOR_CONFIG_NAME: ("gpt-5.6-luna", IMAGE_5_0_DIRECTOR_EFFORT),
+}
+IMAGE_DIRECTOR_PROJECTION_FIELDS = (
+    "route",
+    "config_name",
+    "model",
+    "reasoning_effort",
+)
 IMAGE_GENERATE_MODES = ("auto", "manual")
 IMAGE_PRODUCT = "image-pptgen"
 IMAGE_SERVICE = "image-pptgen-server"
@@ -40,6 +62,55 @@ def _require_dict(result: Any, message: str) -> dict[str, Any]:
     if not isinstance(result, dict):
         raise PlatformError(message)
     return result
+
+
+def _require_server_director_identity(
+    result: dict[str, Any], *, director_debug: str | None
+) -> dict[str, str]:
+    """Require and validate the server-resolved director identity of one receipt.
+
+    ``/api/generate`` resolves the managed Image 5.0 combination from the
+    server-owned configuration that created the batch and Run, and returns that
+    identity.  A missing, malformed, unknown or request-mismatched identity is
+    rejected here instead of being filled in from the local request, so the
+    receipt can never claim a director the server did not persist.
+    """
+    expected_config_name = (
+        IMAGE_5_0_LUNA_DIRECTOR_CONFIG_NAME
+        if director_debug is not None
+        else IMAGE_5_0_CONFIG_NAME
+    )
+    config_name = result.get("config_name")
+    director = result.get("director")
+    if (
+        not isinstance(config_name, str)
+        or config_name not in IMAGE_5_0_DIRECTOR_IDENTITIES
+        or not isinstance(director, dict)
+        or set(director) != set(IMAGE_DIRECTOR_PROJECTION_FIELDS)
+    ):
+        raise PlatformError(
+            "PPTGen Platform returned an invalid Image generation identity"
+        )
+    model, effort = IMAGE_5_0_DIRECTOR_IDENTITIES[config_name]
+    if (
+        director["route"] != IMAGE_5_0_ROUTE
+        or director["config_name"] != config_name
+        or director["model"] != model
+        or director["reasoning_effort"] != effort
+    ):
+        raise PlatformError(
+            "PPTGen Platform returned an invalid Image generation identity"
+        )
+    if config_name != expected_config_name:
+        raise PlatformError(
+            "PPTGen Platform returned an Image generation identity for a different director"
+        )
+    return {
+        "route": IMAGE_5_0_ROUTE,
+        "config_name": config_name,
+        "model": model,
+        "reasoning_effort": effort,
+    }
 
 
 def _require_split_draft(result: Any) -> dict[str, Any]:
@@ -173,16 +244,28 @@ class ImagePptgenClient(PptgenClient):
         deck_id: int,
         mode: str,
         requirement_text: str | None = None,
+        director_debug: str | None = None,
     ) -> dict[str, Any]:
         """Start exactly one fixed Image 5.0 run for a confirmed deck.
 
         The caller chooses only the generation intent.  Auto delegates the
         whole Deck to the existing AutoSkill; Manual carries the exact
         confirmed Deck-wide direction text.  The server owns the strategy,
-        config, requirements, colors, model and provider.
+        config, requirements, colors, model and provider.  ``director_debug``
+        is the one hidden debugging-only exception: when explicitly supplied it
+        must be exactly ``luna-low``, and it is forwarded as one extra field
+        only for that explicit request.  The receipt below reports the
+        server-resolved managed configuration and director identity that
+        actually backs the created batch and Run; a missing or inconsistent
+        server identity is rejected instead of being synthesized locally.
         """
         if mode not in IMAGE_GENERATE_MODES:
             raise PlatformError("Image generation mode must be auto or manual")
+        if director_debug is not None and (
+            not isinstance(director_debug, str)
+            or director_debug not in IMAGE_DIRECTOR_DEBUG_VALUES
+        ):
+            raise PlatformError("Image director debug selection must be luna-low")
         if mode == "auto":
             if requirement_text is not None:
                 raise PlatformError("Image Auto generation accepts no requirement text")
@@ -197,6 +280,8 @@ class ImagePptgenClient(PptgenClient):
                 "mode": "manual",
                 "requirement_text": requirement_text,
             }
+        if director_debug is not None:
+            payload[IMAGE_DIRECTOR_DEBUG_FIELD] = director_debug
         result = _require_dict(
             self._request("POST", "/api/generate", payload, timeout=self.long_timeout),
             "PPTGen Platform returned an invalid Image generation",
@@ -212,10 +297,12 @@ class ImagePptgenClient(PptgenClient):
             or not all(type(run_id) is int and run_id > 0 for run_id in run_ids)
         ):
             raise PlatformError("PPTGen Platform returned an invalid Image generation")
+        director = _require_server_director_identity(result, director_debug=director_debug)
         return {
             "batch_id": batch_id,
-            "config_name": IMAGE_5_0_CONFIG_NAME,
+            "config_name": director["config_name"],
             "deck_id": deck_id,
+            "director": director,
             "run_ids": run_ids,
             "status": "generation_started",
         }

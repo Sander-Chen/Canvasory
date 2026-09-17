@@ -144,9 +144,13 @@ fi
 ln -sfn "$RELEASE_TARGET" "$INSTALL_ROOT/current"
 ln -sfn "$VENV_TARGET" "$INSTALL_ROOT/current-venv"
 
-SKILL_SOURCE="$INSTALL_ROOT/current/app/skills/generate-image-presentation"
-SKILL_TARGET="$HOME/.agents/skills/generate-image-presentation"
-SKILL_STAGE="$HOME/.agents/skills/.generate-image-presentation.new.$$"
+SKILL_SOURCE="$INSTALL_ROOT/current/app/skills/canvasory"
+SKILL_TARGET="$HOME/.agents/skills/canvasory"
+SKILL_STAGE="$HOME/.agents/skills/.canvasory.new.$$"
+LEGACY_SKILL="$HOME/.agents/skills/generate-image-presentation"
+if [ -e "$LEGACY_SKILL" ] || [ -L "$LEGACY_SKILL" ]; then
+  [ ! -L "$LEGACY_SKILL" ] && grep -qx 'name: generate-image-presentation' "$LEGACY_SKILL/SKILL.md" || fail "Unrecognized legacy Skill; preserved without modification."
+fi
 cp -R "$SKILL_SOURCE" "$SKILL_STAGE"
 if [ -e "$SKILL_TARGET" ] && ! diff -qr "$SKILL_TARGET" "$SKILL_STAGE" >/dev/null 2>&1; then
   mkdir -p "$INSTALL_ROOT/backups"
@@ -154,6 +158,10 @@ if [ -e "$SKILL_TARGET" ] && ! diff -qr "$SKILL_TARGET" "$SKILL_STAGE" >/dev/nul
 fi
 rm -rf "$SKILL_TARGET"
 mv "$SKILL_STAGE" "$SKILL_TARGET"
+if [ -d "$LEGACY_SKILL" ]; then
+  mkdir -p "$INSTALL_ROOT/backups"
+  mv "$LEGACY_SKILL" "$INSTALL_ROOT/backups/generate-image-presentation.legacy-$VERSION-$$"
+fi
 
 ENV_FILE="$CONFIG_HOME/image-pptgen/env"
 if [ ! -e "$ENV_FILE" ]; then
@@ -199,9 +207,12 @@ if (
     raise SystemExit("runtime health identity does not match the installed release")
 PY
 printf '\nImage PPTGen %s installed and ready.\n' "$VERSION"
-printf 'Start in a fresh Codex task, paste your source material, and invoke $generate-image-presentation.\n'
+printf 'Start in a fresh Codex task, paste your source material, and invoke $canvasory.\n'
 printf 'Review and revise the proposed page split, then confirm that pagination once.\n'
 printf 'Then agree one whole-Deck design direction, revising it as often as needed, and confirm that direction once before generation.\n'
+printf 'While the deck generates, the Skill follows the same Run and reports grounded progress; a large deck can take a while and a still-running follow is not a failure.\n'
+printf 'A partial Run lists the pages that completed and the pages that failed and is not a complete deck.\n'
+printf 'If a follow or result readback stops, the Run is preserved: read the same Run again. Do not resubmit the material or start a replacement generation.\n'
 printf '\nDiagnostics and startup:\n'
 printf '  export PATH="%s:$PATH"\n' "$HOME/.local/bin"
 printf '  image-pptgen-server   # advanced foreground diagnostics (optional)\n'

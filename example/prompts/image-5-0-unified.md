@@ -8,6 +8,18 @@ Palette-First Rule (Optional, Highest Priority When Present):
 - Color-related instructions from other requirements must NOT override the provided palette.
 - Palette is optional: if absent, you must generate a palette from the content domain, emotional temperature, and/or uploaded image cues while still obeying A–E.
 
+# Output Language Rule (Instruction-Led; Governs Every Section Below)
+Resolve exactly one output language from the user's instruction before producing any content:
+1) Explicit request wins: if the user's instruction explicitly requests a language for the presentation or its output, use that requested language.
+2) Chinese instruction: otherwise, if the instruction is written in Chinese, use Chinese.
+3) English default: otherwise use English.
+Conversation locale, environment, and the language of the source material must not override this resolution.
+
+- Slide prose and every XML tag value that carries presentation text (titles, headings, body copy, labels, notes, and on-slide phrases) must use the resolved output language.
+- Explanatory blueprint prose inside the XML also uses the resolved output language.
+- XML tag names, attribute names, and protocol tokens are fixed identifiers. Keep them exactly as they appear in this document; never translate, rename, re-case, or localize them.
+- Preserve quotations, excerpts, and faithful source material verbatim in their original language. Do not translate, rewrite, transliterate, or strip them, and do not remove Han characters that belong to a preserved quotation or faithful source excerpt.
+
 # Non-Negotiable Physical Laws (Always Enforceable)
 A) Single Page, Single Focus: This page must have only one semantic center with the highest visual weight.
 B) Predictable Reading Path: Audience can locate “what to look at first → then → what to remember” within 3–5 seconds.
@@ -57,7 +69,7 @@ Palette Compliance Audit (MVP addition):
   (ii) an explicitly declared derivation (opacity/tint/shade) of a palette color.
 - If palette cannot satisfy legibility/contrast under A–E, you may introduce only minimal neutral helpers (pure black/white) as a last resort for readability; must document the exception in the XML.
 
-# Output Format (Strict XML; Chinese; no additional content allowed)
+# Output Format (Strict XML; resolved output language; no additional content allowed)
 <SlideBlueprint>
 <Assumptions>
 <Usage_Scene></Usage_Scene>
@@ -144,7 +156,7 @@ Define rules for shape language and line language (geometric tendencies, curvatu
 </Form_Grammar>
 
 <Typography_Voice>
-Define the type system (hierarchy, weights, contrast, line spacing, numeric presentation rules) and Chinese readability strategies, respecting any client typographic constraints.
+Define the type system (hierarchy, weights, contrast, line spacing, numeric presentation rules) and readability strategies for the resolved output language, respecting any client typographic constraints.
 </Typography_Voice>
 </Sensory_Language_Definition>
 
@@ -159,8 +171,9 @@ For concepts/relationships: Explain how you express relationships through groupi
 
 <Instantiation_Copy>
 <On_Slide_Text>
-Provide the actual text content appearing on this page (must be minimal, readable, prioritizing short sentences/phrases).
-For text-dominant slides: Specify paragraphing and emphasis strategies.
+Provide only the literal text appearing on this page (must be minimal, readable, prioritizing short sentences/phrases).
+Do not include placement labels, layout annotations, or instructions in this field.
+Put paragraphing, placement, and emphasis strategies in Module_Blueprint or Typography_Voice instead; those instructions must not appear as visible copy.
 Must include any client-mandated wording and exclude any prohibited wording.
 </On_Slide_Text>
 </Instantiation_Copy>
