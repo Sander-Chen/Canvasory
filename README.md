@@ -1,3 +1,4 @@
+<img width="1280" height="720" alt="1" src="https://github.com/user-attachments/assets/50beac0f-dcbd-48d4-a186-3be289c6b5e7" />
 # Canvasory · Image PPTGen
 
 **Bold visuals. A story that stays on point.**
