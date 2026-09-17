@@ -84,11 +84,9 @@ The outputs are rendered images rather than native slide objects. Use image edit
 
 No. The completed Preview is static and does not need a local service to stay running.
 
-## License & commercial use
+## License
 
-Canvasory is source-available for **noncommercial use** under the [Canvasory Noncommercial License](LICENSE). **All commercial use requires a separate written commercial license**, including internal business use, client work, commercial presentations, and hosted services.
-
-[Request commercial authorization](https://github.com/Sander-Chen/Canvasory/issues/new?title=Commercial%20license%20inquiry). An inquiry is not authorization. Third-party licenses and rights already granted for earlier Apache-2.0 material remain unchanged; see [LICENSE](LICENSE) for scope and terms.
+Licensed under the [Apache License 2.0](LICENSE). Commercial use is permitted under its terms.
 
 ## For developers
 
