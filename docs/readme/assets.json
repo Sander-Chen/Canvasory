@@ -1,0 +1,42 @@
+[
+  {
+    "file": "canvasory-hero.webp",
+    "source_name": "1.png",
+    "source_sha256": "ad667c844889a6b7b512df835a991b2060a8af6f4aee20b896da2c0c47f1d503",
+    "published_sha256": "acc902d1f1b5b9fe3e33d23a3c58398406f526d60c1236310821bb1c61bf8d34",
+    "width": 1280,
+    "height": 720,
+    "source_bytes": 988888,
+    "published_bytes": 51862
+  },
+  {
+    "file": "canvasory-vs-direct-codex.webp",
+    "source_name": "6.png",
+    "source_sha256": "ce6b8bbaf00f602cd03ba30f36d234b7fa0a18d009923fcd678979859c3a6298",
+    "published_sha256": "81fdb9fc12c190351d8c2d3c635d536d7f9e362b7e340c1b5b98801c06bcabdb",
+    "width": 1280,
+    "height": 720,
+    "source_bytes": 1105513,
+    "published_bytes": 152598
+  },
+  {
+    "file": "you-decide-canvasory-takes-over.webp",
+    "source_name": "4.png",
+    "source_sha256": "8b188887bbc065073e64c9a6d24267d0f75238a2075262d2299d9c6da67995ef",
+    "published_sha256": "bbef53c8ce260d37f6b01d7b4bc6e9fdde9128f44b498b41a4af4bec7b1d3c65",
+    "width": 1280,
+    "height": 723,
+    "source_bytes": 87693,
+    "published_bytes": 30810
+  },
+  {
+    "file": "complete-visual-deck.webp",
+    "source_name": "8.png",
+    "source_sha256": "4b27265b28d6edb306ebf9c400db42144dd3780e662b614410f97188430c3445",
+    "published_sha256": "a38af47de042546911ff3f7b649940cd7bcef4f003cd26a1f9f91df1f01c93fd",
+    "width": 1280,
+    "height": 690,
+    "source_bytes": 120347,
+    "published_bytes": 34186
+  }
+]

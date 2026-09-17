@@ -1,83 +1,92 @@
-<img width="1280" height="720" alt="1" src="https://github.com/user-attachments/assets/50beac0f-dcbd-48d4-a186-3be289c6b5e7" />
-# Canvasory · Image PPTGen
+# Canvasory
 
-**Bold visuals. A story that stays on point.**
+![Canvasory — Make the Picture Do the Explaining; a visual plan connects source material to a coherent sequence of slides.](docs/readme/canvasory-hero.webp)
 
-Canvasory is a presentation-first Codex Skill that turns text or Markdown into visual slide decks. Review the page outline and choose a creative direction, then let an AI art director plan each slide’s message, text, imagery, and reading flow.
+**Turn source material into art-directed visual presentations.**
 
-You receive a static preview, high-resolution PNGs in presentation order, and a ZIP of the deck.
+Canvasory is a Codex Skill that plans each page’s focus, imagery, relationships, layout, and reading order before image generation. Bring your material, review the page outline, and choose a creative direction; Canvasory turns that plan into a visual deck you can preview and download.
 
-![Canvasory and direct Codex frog-life comparison](docs/demo/canvasory-codex-comparison.png)
+## Install
 
-*[A user-provided comparison](docs/demo/COMPARISON.md) of two frog-life presentation examples. This illustrates one example, not a controlled benchmark or a guarantee of results.*
-
-Supported platforms are macOS ARM64 and Linux x86_64. Windows is not currently supported.
-
-## Start in one sentence
-
-Send this exact sentence to Codex:
+Send this sentence to Codex:
 
 > Install this Skill: https://image-pptgen.pages.dev/install.sh
 
-Do not add a target directory, Python path, environment variable, or extra setup step. The installer and Skill manage their own location and configuration.
+## Why Canvasory?
 
-## Why not just ask Codex directly?
+A subject tells you what a presentation is about. An art direction tells each page how to explain it.
 
-Canvasory is a packaged workflow, not a new model. It adds repeatable checkpoints around Codex: faithful pagination, whole-deck art direction, explicit approvals, generation, Preview, and export. These stages help keep the source, narrative, and visuals aligned before image generation begins.
+Canvasory adds an **art-direction and page-blueprint planning layer** before image generation: what to show, how the parts relate, and where attention should go. You guide the overall direction; Canvasory handles the visual decisions for each page.
 
-The output is image-based. That supports strong visual consistency, but it also means revisions differ from editing ordinary text boxes in presentation software: changing slide content or composition generally requires image editing or regeneration.
+![Frog physiology examples side by side: Canvasory uses a central illustrated frog with connected callouts; Direct in Codex uses three stacked comparison rows.](docs/readme/canvasory-vs-direct-codex.webp)
+
+<sub>Canvasory packages a workflow, not a new image model. This supplied comparison illustrates one example, not a controlled benchmark or a guarantee of results. [Image provenance](docs/readme/PROVENANCE.md).</sub>
 
 ## How it works
 
-### 1. Submit the source
+1. **Add your material.** Start with text or Markdown.
+2. **Review the outline.** Revise the pages and confirm the plan.
+3. **Set the direction.** Choose Auto or describe a whole-deck direction, then confirm it.
+4. **Preview and download.** Canvasory plans each page, renders the deck, and prepares your files.
 
-Give Codex plain text or Markdown. Canvasory does not accept PDF, image, screenshot, or OCR input.
+![You decide: add material, review the outline, and set and confirm the direction. Canvasory takes over: plan each page, render the deck, and build the preview and PNG ZIP.](docs/readme/you-decide-canvasory-takes-over.webp)
 
-### 2. Review and confirm pagination
+<details>
+<summary>Usage details</summary>
 
-Canvasory proposes a page split before spending image-generation capacity. The complete plan appears directly in the final reply, including after revisions, so it remains readable without expanding the work details. Review the page count, titles, and content; ask for revisions if needed. Then explicitly confirm the pagination. This confirmation does not start generation.
+**Installation.** Use only the installation sentence and address above. Do not add a target directory, Python path, environment variable, or extra setup step. The installer and Skill manage their own location and configuration.
 
-### 3. Choose and confirm a creative direction
+**Pagination.** Canvasory proposes a page split before spending image-generation capacity. The complete plan appears directly in the final reply, including after revisions, so it remains readable without expanding the work details. Review the page count, titles, and content, and request revisions as needed. You can change the page count without resubmitting the source. Explicitly confirm the final pagination; this confirmation does not start generation.
 
-Choose **Auto** or describe one creative direction for the whole deck. In Auto, the Image Director plans each slide's message, imagery, text, layout, and reading flow while keeping the deck coherent. A written direction can be refined conversationally.
+**Creative direction.** After confirming pagination, choose Auto or describe one creative direction for the entire deck. Auto delegates the visual direction; a written direction can be refined through conversation. In either case, the art director plans the message, imagery, text, layout, and reading flow for each slide. Separate style requests for individual slides are not supported.
 
-Canvasory does not support separate style requests for individual slides. Whichever route you choose, including Auto, you must explicitly confirm the final whole-deck direction.
+**Confirmation.** Choosing Auto is not confirmation. Both Auto and a written direction require a separate, explicit confirmation of the final whole-deck direction. Only a final, unqualified confirmation starts generation; a request for changes keeps the direction pending.
 
-### 4. Generate, preview, and download
+**Language and review.** Presentation language follows your material and request. Review wording, factual accuracy, and visual details before presenting.
 
-Only the final, unqualified confirmation starts generation. The result includes a static Preview with page navigation, zoom, and fullscreen viewing; high-resolution PNG files in presentation order; and a ZIP containing the complete deck. The Preview does not depend on a long-running local service.
+</details>
 
-## Limits and usage
+## What you get
 
-Generation depends on model access and applicable usage limits; it is not unlimited free or fully offline generation. Review wording, factual accuracy, and visual details before presenting.
+![One subject. One direction. A complete visual deck. Page previews lead to high-resolution PNG files in presentation order.](docs/readme/complete-visual-deck.webp)
 
-Presentation language follows your material and request. The samples in `eval-materials/` are evaluation inputs, not a restriction on topics.
+- **Static Preview** — navigate between pages, zoom in, and view fullscreen without keeping a local service running.
+- **High-resolution PNGs** — rendered slide images in presentation order.
+- **Ordered ZIP** — the complete deck’s slide images packaged for download.
+
+## Current limits
+
+- **Input:** text and Markdown only. PDF, image, screenshot, and OCR input are not supported.
+- **Editing:** slides are images, not editable PowerPoint objects. Changing content or composition may require image editing or regeneration.
+- **Direction:** creative requirements apply to the whole deck, rather than separate styles for individual slides.
+- **Platforms:** macOS ARM64 and Linux x86_64. Windows is not currently supported.
+- **Access and usage:** model access and applicable usage limits still apply. Generation is not unlimited free or fully offline.
 
 ## FAQ
 
 **Can I change the page count without resubmitting my source?**
+
 Yes. Revise the proposed split, then confirm the final pagination.
 
 **Does choosing Auto begin generation?**
+
 No. Auto still requires a separate, explicit confirmation of the final direction.
 
 **Can I give every slide a different visual style?**
-No. Canvasory uses one whole-deck creative direction so the presentation reads as a unified story.
+
+No. Describe one creative direction for the whole deck.
 
 **Can I edit every element after generation?**
-The primary outputs are rendered images rather than native slide objects. Use image editing or regeneration when revisions are needed.
 
-## Historical Image PPTGen 3.0 demo
+The outputs are rendered images rather than native slide objects. Use image editing or regeneration when revisions are needed.
 
-These images come from one five-slide frog-life presentation generated with the historical Image PPTGen 3.0 workflow. They are retained as a traceable example of earlier output and are not a current 5.0 gallery. The gallery shows three selected pages; known limitations are recorded in the provenance document.
+**Does the Preview need a background service?**
 
-| Cover | Middle | Final |
-| --- | --- | --- |
-| ![Historical frog-life cover](docs/demo/english/frog-life/cover.webp) | ![Historical frog-life middle slide](docs/demo/english/frog-life/middle.webp) | ![Historical frog-life final slide](docs/demo/english/frog-life/final.webp) |
+No. The completed Preview is static and does not need a local service to stay running.
 
-See [demo provenance](docs/demo/PROVENANCE.md) for source identity and file hashes.
+## For developers
 
-## Source map
+The Codex Skill is the user entry point. The source is available at [Sander-Chen/Canvasory](https://github.com/Sander-Chen/Canvasory).
 
 | Path | Responsibility |
 | --- | --- |
@@ -86,8 +95,16 @@ See [demo provenance](docs/demo/PROVENANCE.md) for source identity and file hash
 | `backend/` | Pagination, generation, state, audit, and artifacts |
 | `frontend/` | Preview and local review interface source |
 | `packaging/image/` | macOS ARM64 and Linux x86_64 adapters |
-| `eval-materials/` | English acceptance samples, not a usage limit |
 
-The Codex Skill is the user entry point. The repository source is available at [Sander-Chen/canvasory](https://github.com/Sander-Chen/canvasory).
+Earlier versions also included `eval-materials/` for English acceptance samples. That directory is no longer in the current tree; those samples were never a restriction on supported topics.
 
-The current public product is Image PPTGen 5.0. Historical routes are retained as technical history, not selectable product modes.
+<details>
+<summary>History &amp; provenance</summary>
+
+Image PPTGen is the historical name of the project. Historical generation routes are not selectable product modes.
+
+The historical Image PPTGen 3.0 frog-life demo contains five slides. Three selected images remain in the repository; they document earlier output, not the current Canvasory release. Source identity, file hashes, and known limitations are retained in [historical demo provenance](docs/demo/PROVENANCE.md).
+
+The [previous comparison image and its provenance](docs/demo/COMPARISON.md) are also preserved. The four images displayed in this README come from the owner-supplied Canvasory launch materials; see [README image provenance](docs/readme/PROVENANCE.md) for their source and compression details.
+
+</details>
